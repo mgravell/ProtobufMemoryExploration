@@ -24,8 +24,8 @@ namespace TestProxyPBN
     // desirable: [global::System.Runtime.CompilerServices.SkipLocalsInit]
     internal sealed partial class SomeSerializer :
         global::ProtoBuf.Serializers.ISerializer<ForwardPerItemRequest>, global::ProtoBuf.Serializers.ISerializer<ForwardPerItemResponse>,
-        global::ProtoBuf.Serializers.ISerializer<ForwardRequest>, global::ProtoBuf.Serializers.ISerializer<ForwardResponse>,
-        global::ProtoBuf.Serializers.IMeasuringSerializer<ForwardPerItemRequest>
+        global::ProtoBuf.Serializers.ISerializer<ForwardRequest>, global::ProtoBuf.Serializers.ISerializer<ForwardResponse>
+        //global::ProtoBuf.Serializers.IMeasuringSerializer<ForwardPerItemRequest>
     {
         // handles all message types; if we need a more specific override: can use explicit implementation
         public global::ProtoBuf.Serializers.SerializerFeatures Features => global::ProtoBuf.Serializers.SerializerFeatures.CategoryMessage | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString;
@@ -108,10 +108,10 @@ namespace TestProxyPBN
             }
         }
 
-        int global::ProtoBuf.Serializers.IMeasuringSerializer<ForwardPerItemRequest>.Measure(global::ProtoBuf.ISerializationContext context, global::ProtoBuf.WireType wireType, ForwardPerItemRequest value)
-        {
-            throw new NotImplementedException();
-        }
+        //int global::ProtoBuf.Serializers.IMeasuringSerializer<ForwardPerItemRequest>.Measure(global::ProtoBuf.ISerializationContext context, global::ProtoBuf.WireType wireType, ForwardPerItemRequest value)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         void global::ProtoBuf.Serializers.ISerializer<ForwardPerItemRequest>.Write(ref global::ProtoBuf.ProtoWriter.State state, ForwardPerItemRequest value)
         {
