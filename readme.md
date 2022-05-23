@@ -16,6 +16,6 @@ be that the [de]serialization performance is not even key!
 
 Next steps:
 
-1. investigate hacking the byte-buffer recycling hacks into Google.Protobuf
-2. investigate hacking the value-type usage into Google.Protobuf
+1. investigate hacking the byte-buffer recycling hacks into Google.Protobuf (tests running now)
+2. investigate hacking the value-type usage into Google.Protobuf (some T : class nuances making this a little awkward; investigating)
 3. investigate using a hand-written gRPC stub rather than the protobuf-net.Grpc hooks - see whether we can make things better there
