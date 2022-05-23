@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+		<SelfContained>true</SelfContained>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<PublishReadyToRun>true</PublishReadyToRun>
+		<PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+		<PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<ServerGarbageCollection>true</ServerGarbageCollection>
+		<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+		<RetainVMGarbageCollection>true</RetainVMGarbageCollection>
+		<TieredCompilation>false</TieredCompilation>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Google.Protobuf" Version="3.19.4" />
+		<PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="..\GrpcProto\test_proxy.proto" GrpcServices="Both" />
+	</ItemGroup>
+
+</Project>

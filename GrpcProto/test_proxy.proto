@@ -1,0 +1,31 @@
+﻿syntax = "proto3";
+
+package TestProxyPkg;
+
+option csharp_namespace = "TestProxy";
+
+message ForwardPerItemRequest {
+  bytes itemId = 1;
+  bytes itemContext = 2;
+}
+
+message ForwardRequest {
+  string traceId = 1;
+  repeated ForwardPerItemRequest itemRequests = 2;
+  bytes requestContextInfo = 3;
+}   
+
+message ForwardPerItemResponse {
+  float result = 1;
+  bytes extraResult = 2;
+}
+
+message ForwardResponse {
+  repeated ForwardPerItemResponse itemResponses = 1;
+  int64 routeLatencyInUs = 2;
+  int64 routeStartTimeInTicks = 3;
+}
+
+service TestProxy {
+  rpc Forward (ForwardRequest) returns (ForwardResponse);
+}

@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);NOGRPC</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\GrpcProto\LeakTrackingObjectPool.cs" Link="LeakTrackingObjectPool.cs" />
+    <Compile Include="..\GrpcProto\ObjectCache.cs" Link="ObjectCache.cs" />
+    <Compile Include="..\GrpcProto\ObjectPool.cs" Link="ObjectPool.cs" />
+    <Compile Include="..\GrpcProto\test_proxy.cs" Link="test_proxy.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+    <PackageReference Include="BenchmarkDotNet.Annotations" Version="0.13.1" />
+    <!--<PackageReference Include="Google.Protobuf" Version="3.20.1" />-->
+    <!--<PackageReference Include="protobuf-net" Version="3.1.8" />-->
+    <!--<PackageReference Include="protobuf-net.Grpc" Version="1.0.169" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj" />
+    <ProjectReference Include="..\..\..\protobuf\csharp\src\Google.Protobuf\Google.Protobuf.csproj" />
+  </ItemGroup>
+
+</Project>

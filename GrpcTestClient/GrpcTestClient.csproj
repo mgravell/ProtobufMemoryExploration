@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+		<SelfContained>true</SelfContained>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<PublishReadyToRun>true</PublishReadyToRun>
+		<PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+		<PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<ServerGarbageCollection>true</ServerGarbageCollection>
+		<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+		<RetainVMGarbageCollection>true</RetainVMGarbageCollection>
+		<TieredCompilation>false</TieredCompilation>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Include="..\GrpcProto\LeakTrackingObjectPool.cs" Link="LeakTrackingObjectPool.cs" />
+	  <Compile Include="..\GrpcProto\ObjectCache.cs" Link="ObjectCache.cs" />
+	  <Compile Include="..\GrpcProto\ObjectPool.cs" Link="ObjectPool.cs" />
+	  <Compile Include="..\GrpcProto\test_proxy.cs" Link="test_proxy.cs" />
+	</ItemGroup>
+	
+	<ItemGroup>
+		<None Include="..\GrpcProto\test_proxy.proto" Bytes="PooledMemory" Services="Grpc" />
+		<PackageReference Include="Grpc.Net.Client" Version="2.39.0" />
+		<PackageReference Include="protobuf-net" Version="3.1.8" />
+		<PackageReference Include="protobuf-net.Grpc" Version="1.0.169" />
+		<PackageReference Include="protobuf-net.BuildTools" Version="3.1.8" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
+        <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj" />
+        <ProjectReference Include="..\..\..\protobuf\csharp\src\Google.Protobuf\Google.Protobuf.csproj" />
+	</ItemGroup>
+</Project>
