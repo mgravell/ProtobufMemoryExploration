@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore;
+﻿// #define HACKUP
+
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -22,17 +24,18 @@ namespace GrpcTestService
 
             public void ConfigureServices(IServiceCollection services)
             {
-                /*
+#if HACKUP
                 services.AddGrpc(options =>
                 {
                     options.MaxReceiveMessageSize = GrpcMaxReceiveMessageSizeInMB;
                 });
-                */
+#else
 
                 services.AddCodeFirstGrpc(options =>
                 {
                     options.MaxReceiveMessageSize = GrpcMaxReceiveMessageSizeInMB;
                 });
+#endif
 
                 // Filter out Asp Net Core's default Info logging and just display warnings
                 services.AddLogging(

@@ -17,6 +17,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "protobuf-net.Reflection", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Google.Protobuf", "..\..\protobuf\csharp\src\Google.Protobuf\Google.Protobuf.csproj", "{CE8678C9-4F31-4A91-82B5-224EC81A5181}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Google", "Google", "{44F39536-9189-4CAB-8353-75F71248D862}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcTestClient", "Google\GoogleGrpcTestClient\GrpcTestClient.csproj", "{DEAD6D41-204A-408F-9CBB-03C457105AA4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GrpcTestService", "Google\GoogleGrpcTestService\GrpcTestService.csproj", "{17ECC455-980A-4FD6-82E4-B092FE1E06FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,9 +72,25 @@ Global
 		{CE8678C9-4F31-4A91-82B5-224EC81A5181}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CE8678C9-4F31-4A91-82B5-224EC81A5181}.VS|Any CPU.ActiveCfg = Debug|Any CPU
 		{CE8678C9-4F31-4A91-82B5-224EC81A5181}.VS|Any CPU.Build.0 = Debug|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.VS|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4}.VS|Any CPU.Build.0 = Debug|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.VS|Any CPU.ActiveCfg = Debug|Any CPU
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD}.VS|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DEAD6D41-204A-408F-9CBB-03C457105AA4} = {44F39536-9189-4CAB-8353-75F71248D862}
+		{17ECC455-980A-4FD6-82E4-B092FE1E06FD} = {44F39536-9189-4CAB-8353-75F71248D862}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C08A688E-CE71-4541-B9B1-880E802FCF50}

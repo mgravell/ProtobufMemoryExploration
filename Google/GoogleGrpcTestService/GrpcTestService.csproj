@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
@@ -22,18 +22,14 @@
 		<RetainVMGarbageCollection>true</RetainVMGarbageCollection>
 		<TieredCompilation>false</TieredCompilation>
 	</PropertyGroup>
-	
+
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="3.19.4" />
-		<PackageReference Include="Grpc.Net.Client" Version="2.39.0" />
-		<PackageReference Include="Grpc.Tools" Version="2.43.0">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
+		<PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="..\GrpcProto\test_proxy.proto" GrpcServices="Client" />
+		<Protobuf Include="..\GoogleGrpcProto\test_proxy.proto" GrpcServices="Both" />
 	</ItemGroup>
 
 </Project>

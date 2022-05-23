@@ -17,6 +17,9 @@ Current results - key:
 
 Note: the `_H` examples use hacks in Google.Protobuf; this code will not compile/work against the real repo!
 
+Aside: the pattern I'm using here for memory reduction is one I've seen arise multiple times; I've also started a discussion around
+normalizing this pattern; no idea where that will go - assume "nowhere" for now.
+
 Serialize:
 
 |                          Method |       Mean |    Error |    StdDev |     Median |  Gen 0 | Allocated |
@@ -59,8 +62,83 @@ but may be worth a second look.
 The gRPC performance (as seen via the test client/server) is worse than the [de]serialization benchmarks would suggest on the surface, so it may
 be that the [de]serialization performance is not even key!
 
+Using the gRPC client/server implementation provided, a hand-written gRPC stub using the protobuf-net hooks (but not protobuf-net.Grpc) has been
+investigated to see if this is relevant; no major difference between that and regular code-first protobuf-net.Grpc
+
 Next steps:
 
-1. investigate using a hand-written gRPC stub rather than the protobuf-net.Grpc hooks - see whether we can make things better there
-2. investigate hacking the value-type usage into Google.Protobuf (some T : class nuances making this a little awkward; investigating)
-3. investigate improving the custom memory allocator
+1. investigate the impact of the "bag" object recycler (gRPC root object) - this may be impacting the gRPC performance?
+2. investigate improving the custom memory allocator
+3. investigate hacking the value-type usage into Google.Protobuf (some T : class nuances making this a little awkward; investigating)
+
+----
+
+
+gRPC results:
+
+Google protobuf and gRPC (baseline)
+
+Ready to send simulated requests
+successful rate 1 = 10000/10000
+qps 246.16416959743367 = 10000/(2022-05-23 16:29:16 - 2022-05-23 16:28:35)
+min   latency in Us: 2401
+max   latency in Us: 164126
+50%   latency in Us: 3676
+90%   latency in Us: 4720
+95%   latency in Us: 5480
+99%   latency in Us: 14568
+99.9% latency in Us: 27101
+successful rate 1 = 10000/10000
+qps 264.95911609299725 = 10000/(2022-05-23 16:29:54 - 2022-05-23 16:29:16)
+min   latency in Us: 2374
+max   latency in Us: 97882
+50%   latency in Us: 3500
+90%   latency in Us: 4270
+95%   latency in Us: 4784
+99%   latency in Us: 11976
+99.9% latency in Us: 28588
+
+protobuf-net with memory hacks using protobuf-net.Grpc vanilla code-first
+
+Ready to send simulated requests
+successful rate 1 = 10000/10000
+qps 146.22636179758976 = 10000/(2022-05-23 16:38:21 - 2022-05-23 16:37:12)
+min   latency in Us: 3570
+max   latency in Us: 63220
+50%   latency in Us: 5498
+90%   latency in Us: 8899
+95%   latency in Us: 18364
+99%   latency in Us: 27274
+99.9% latency in Us: 37840
+successful rate 1 = 10000/10000
+qps 158.93389558635883 = 10000/(2022-05-23 16:39:23 - 2022-05-23 16:38:21)
+min   latency in Us: 3195
+max   latency in Us: 48949
+50%   latency in Us: 5086
+90%   latency in Us: 7153
+95%   latency in Us: 16972
+99%   latency in Us: 26875
+99.9% latency in Us: 32893
+
+protobuf-net with memory hacks using Grpc.Core.Api and hacked-up client/server stubs (i.e. protobuf-net but not protobuf-net.Grpc)
+
+Ready to send simulated requests
+successful rate 1 = 10000/10000
+qps 144.15500475622858 = 10000/(2022-05-23 16:51:34 - 2022-05-23 16:50:25)
+min   latency in Us: 3294
+max   latency in Us: 184347
+50%   latency in Us: 5461
+90%   latency in Us: 9214
+95%   latency in Us: 17590
+99%   latency in Us: 27866
+99.9% latency in Us: 84714
+successful rate 1 = 10000/10000
+qps 151.83497878494111 = 10000/(2022-05-23 16:52:40 - 2022-05-23 16:51:34)
+min   latency in Us: 3461
+max   latency in Us: 59561
+50%   latency in Us: 5309
+90%   latency in Us: 7808
+95%   latency in Us: 17538
+99%   latency in Us: 26875
+99.9% latency in Us: 35853
+

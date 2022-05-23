@@ -33,10 +33,11 @@
 	<ItemGroup>
 		<None Include="..\GrpcProto\test_proxy.proto" Bytes="PooledMemory" Services="Grpc" />
 		<PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
-		<PackageReference Include="protobuf-net" Version="3.1.8" />
+		<!--<PackageReference Include="protobuf-net" Version="3.1.8" />-->
 		<PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.169" />
 		<PackageReference Include="protobuf-net.BuildTools" Version="3.1.8" PrivateAssets="all" IncludeAssets="runtime;build;native;contentfiles;analyzers;buildtransitive" />
         <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net.Core\protobuf-net.Core.csproj" />
+        <ProjectReference Include="..\..\..\protobuf-net\src\protobuf-net\protobuf-net.csproj" />
         <ProjectReference Include="..\..\..\protobuf\csharp\src\Google.Protobuf\Google.Protobuf.csproj" />
 	</ItemGroup>
 

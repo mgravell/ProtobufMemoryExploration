@@ -4,14 +4,136 @@
 //   Input: test_proxy.proto
 // </auto-generated>
 
+using grpc = global::Grpc.Core;
 
 #region Designer generated code
 #pragma warning disable CS0612, CS0618, CS1591, CS3021, IDE0079, IDE1006, RCS1036, RCS1057, RCS1085, RCS1192
 
-using System;
-
 namespace TestProxyPBN
 {
+    internal static class TestProxy
+    {
+        static readonly string __ServiceName = "TestProxyPkg.TestProxy";
+
+        static class SerializerCache<T>
+        {
+            public static readonly global::System.Action<T, grpc::SerializationContext> Serializer = (value, ctx) =>
+            {
+                global::ProtoBuf.IMeasuredProtoOutput<global::System.Buffers.IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
+                using var measured = measuredSerializer.Measure(value);
+                int len = checked((int)measured.Length);
+                ctx.SetPayloadLength(len);
+                measuredSerializer.Serialize(measured, ctx.GetBufferWriter());
+                ctx.Complete();
+            };
+            public static readonly global::System.Func<grpc::DeserializationContext, T> Deserializer = ctx =>
+            {
+                var buffer = ctx.PayloadAsReadOnlySequence();
+                return CustomTypeModel.Instance.Deserialize<T>(buffer);
+            };
+        }
+
+        [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+        static readonly grpc::Marshaller<global::TestProxyPBN.ForwardRequest> __Marshaller_TestProxyPkg_ForwardRequest = grpc::Marshallers.Create(
+            SerializerCache<global::TestProxyPBN.ForwardRequest>.Serializer, SerializerCache<global::TestProxyPBN.ForwardRequest>.Deserializer);
+        [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+        static readonly grpc::Marshaller<global::TestProxyPBN.ForwardResponse> __Marshaller_TestProxyPkg_ForwardResponse = grpc::Marshallers.Create(
+            SerializerCache<global::TestProxyPBN.ForwardResponse>.Serializer, SerializerCache<global::TestProxyPBN.ForwardResponse>.Deserializer);
+
+        [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+        static readonly grpc::Method<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse> __Method_Forward = new grpc::Method<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse>(
+            grpc::MethodType.Unary,
+            __ServiceName,
+            "Forward",
+            __Marshaller_TestProxyPkg_ForwardRequest,
+            __Marshaller_TestProxyPkg_ForwardResponse);
+
+        /// <summary>Base class for server-side implementations of TestProxy</summary>
+        [grpc::BindServiceMethod(typeof(TestProxy), "BindService")]
+        public abstract partial class TestProxyBase
+        {
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public virtual global::System.Threading.Tasks.Task<global::TestProxyPBN.ForwardResponse> Forward(global::TestProxyPBN.ForwardRequest request, grpc::ServerCallContext context)
+            {
+                throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
+            }
+
+        }
+
+        public partial class TestProxyClient : grpc::ClientBase<TestProxyClient>
+        {
+            /// <summary>Creates a new client for TestProxy</summary>
+            /// <param name="channel">The channel to use to make remote calls.</param>
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public TestProxyClient(grpc::ChannelBase channel) : base(channel)
+            {
+            }
+            /// <summary>Creates a new client for TestProxy that uses a custom <c>CallInvoker</c>.</summary>
+            /// <param name="callInvoker">The callInvoker to use to make remote calls.</param>
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public TestProxyClient(grpc::CallInvoker callInvoker) : base(callInvoker)
+            {
+            }
+            /// <summary>Protected parameterless constructor to allow creation of test doubles.</summary>
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            protected TestProxyClient() : base()
+            {
+            }
+            /// <summary>Protected constructor to allow creation of configured clients.</summary>
+            /// <param name="configuration">The client configuration.</param>
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            protected TestProxyClient(ClientBaseConfiguration configuration) : base(configuration)
+            {
+            }
+
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public virtual global::TestProxyPBN.ForwardResponse Forward(global::TestProxyPBN.ForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+            {
+                return Forward(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+            }
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public virtual global::TestProxyPBN.ForwardResponse Forward(global::TestProxyPBN.ForwardRequest request, grpc::CallOptions options)
+            {
+                return CallInvoker.BlockingUnaryCall(__Method_Forward, null, options, request);
+            }
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public virtual grpc::AsyncUnaryCall<global::TestProxyPBN.ForwardResponse> ForwardAsync(global::TestProxyPBN.ForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+            {
+                return ForwardAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
+            }
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            public virtual grpc::AsyncUnaryCall<global::TestProxyPBN.ForwardResponse> ForwardAsync(global::TestProxyPBN.ForwardRequest request, grpc::CallOptions options)
+            {
+                return CallInvoker.AsyncUnaryCall(__Method_Forward, null, options, request);
+            }
+            /// <summary>Creates a new instance of client from given <c>ClientBaseConfiguration</c>.</summary>
+            [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+            protected override TestProxyClient NewInstance(ClientBaseConfiguration configuration)
+            {
+                return new TestProxyClient(configuration);
+            }
+        }
+
+        /// <summary>Creates service definition that can be registered with a server</summary>
+        /// <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+        public static grpc::ServerServiceDefinition BindService(TestProxyBase serviceImpl)
+        {
+            return grpc::ServerServiceDefinition.CreateBuilder()
+                .AddMethod(__Method_Forward, serviceImpl.Forward).Build();
+        }
+
+        /// <summary>Register service method with a service binder with or without implementation. Useful when customizing the  service binding logic.
+        /// Note: this method is part of an experimental API that can change or be removed without any prior notice.</summary>
+        /// <param name="serviceBinder">Service methods will be bound by calling <c>AddMethod</c> on this object.</param>
+        /// <param name="serviceImpl">An object implementing the server-side handling logic.</param>
+        [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
+        public static void BindService(grpc::ServiceBinderBase serviceBinder, TestProxyBase serviceImpl)
+        {
+            serviceBinder.AddMethod(__Method_Forward, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse>(serviceImpl.Forward));
+        }
+    }
+
     // desirable: [global::System.Runtime.CompilerServices.SkipLocalsInit]
     internal sealed class CustomTypeModel : global::ProtoBuf.Meta.TypeModel
     {
