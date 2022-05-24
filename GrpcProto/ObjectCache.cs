@@ -50,9 +50,83 @@ namespace TestProxyPBN
             }
             return false;
         }
-
+        public static bool TryRecycle<T>(this Memory<T> value)
+        {
+            if (MemoryMarshal.TryGetArray<T>(value, out var segment))
+            {
+                ArrayPool<T>.Shared.Return(segment.Array);
+                return true;
+            }
+            return false;
+        }
+        public static bool TryRecycle<T>(this ReadOnlyMemory<T> value)
+        {
+            if (MemoryMarshal.TryGetArray<T>(value, out var segment))
+            {
+                ArrayPool<T>.Shared.Return(segment.Array);
+                return true;
+            }
+            return false;
+        }
         public static bool IsTrivial(this Memory<byte> value)
             => value.IsEmpty && !MemoryMarshal.TryGetMemoryManager<byte, SlabAllocator.PerThreadSlab>(value, out _);
+
+        internal static T[] GetBackingArray<T>(Memory<T> memory, out int count, bool forAppend)
+        {
+            if (MemoryMarshal.TryGetArray<T>(memory, out var segment) && segment.Offset == 0)
+            {
+                count = segment.Count;
+                return segment.Array;
+            }
+            if (!memory.IsEmpty) Throw();
+            count = 0;
+            return forAppend ? ArrayPool<T>.Shared.Rent(InitialSize) : Array.Empty<T>();
+
+            static void Throw() => throw new InvalidOperationException("Not a suitable backing array");
+        }
+        const int InitialSize = 16;
+        internal static void EnsureCapacity<T>(ref T[] array, int capacity)
+        {
+            var len = array.Length;
+            if (capacity > array.Length)
+            {
+                if (len == 0)
+                {
+                    array = ArrayPool<T>.Shared.Rent(capacity);
+                }
+                else
+                {
+                    var newArr = ArrayPool<T>.Shared.Rent(capacity);
+                    Array.Copy(array, newArr, len);
+                    ArrayPool<T>.Shared.Return(array);
+                    array = newArr;
+                }
+            }
+        }
+
+        internal static void Extend<T>(ref T[] array)
+        {
+            var len = array.Length;
+            if (len == 0)
+            {
+                array = ArrayPool<T>.Shared.Rent(InitialSize);
+            }
+            else
+            {
+                var newArr = ArrayPool<T>.Shared.Rent(len * 2);
+                Array.Copy(array, newArr, len);
+                ArrayPool<T>.Shared.Return(array);
+                array = newArr;
+            }
+        }
+
+        internal static Memory<T> Add<T>(Memory<T> memory, T value)
+        {
+            var arr = GetBackingArray(memory, out var count, true);
+            if (count == arr.Length) Extend(ref arr);
+            arr[count++] = value;
+            return new Memory<T>(arr, 0, count);
+        }
     }
     internal sealed class SlabAllocator : IMemoryConverter<Memory<byte>, byte>, IMemoryManager
     {
@@ -251,11 +325,12 @@ namespace TestProxyPBN
             requestContextInfo = default;
             __oldMemory.TryRelease();
             
-            foreach (ref ForwardPerItemRequest tmp in CollectionsMarshal.AsSpan(itemRequests))
+            foreach (ref readonly ForwardPerItemRequest tmp in itemRequests.Span)
             {
                 tmp.Dispose();
             }
-            itemRequests.Clear();
+            itemRequests.TryRecycle();
+            itemRequests = default;
             traceId = "";
             if (Program.EnableObjectCache)
             {
@@ -282,11 +357,11 @@ namespace TestProxyPBN
     {
         public void Dispose()
         {
-            foreach (ref ForwardPerItemResponse tmp in CollectionsMarshal.AsSpan(itemResponses))
+            foreach (ref readonly ForwardPerItemResponse tmp in itemResponses.Span)
             {
                 tmp.Dispose();
             }
-            itemResponses.Clear();
+            itemResponses.TryRecycle();
             routeStartTimeInTicks = 0;
             routeLatencyInUs = 0;
             if (Program.EnableObjectCache)
@@ -304,7 +379,7 @@ namespace GrpcTestService
         public static ForwardRequest Create()
         {
             var tmp = new ForwardRequest();
-            tmp.itemRequests.EnsureCapacity(4096);
+            //tmp.itemRequests.EnsureCapacity(4096);
             return tmp;
         }
     }
@@ -315,7 +390,6 @@ namespace GrpcTestService
         public static ForwardResponse Create()
         {
             var tmp = new ForwardResponse();
-            tmp.itemResponses.EnsureCapacity(4096);
             return tmp;
         }
     }
@@ -332,7 +406,7 @@ namespace GrpcTestService
             for (int i = 0; i < 5; i++)
             {
                 var tmp = new ForwardRequest();
-                tmp.itemRequests.EnsureCapacity(4096);
+                //tmp.itemRequests.EnsureCapacity(4096);
                 this.forwardRequestPool.Free(tmp);
             }
 
@@ -341,7 +415,6 @@ namespace GrpcTestService
             for (int i = 0; i < 5; i++)
             {
                 var tmp = new ForwardResponse();
-                tmp.itemResponses.EnsureCapacity(4096);
                 this.forwardResponsePool.Free(tmp);
             }
         }

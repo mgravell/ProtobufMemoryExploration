@@ -87,7 +87,7 @@ public class SerializeBenchmarks
             scratch.Slice(0, bytes).CopyTo(itemId.Span);
             var itemContext = SlabAllocator.Rent(ItemContextSize);
             itemContext.Span.Fill((byte)'b');
-            pbnRequest.itemRequests.Add(new ForwardPerItemRequest(itemId, itemContext));
+            pbnRequest.itemRequests = TestProxyPBN.MemoryExtensions.Add(pbnRequest.itemRequests, new ForwardPerItemRequest(itemId, itemContext));
         }
 
         var requestContextInfo = SlabAllocator.Rent(RequestContextSize + 3);
@@ -98,15 +98,15 @@ public class SerializeBenchmarks
         _pbnRequest = pbnRequest;
 
         var pbnResponse = Program.EnableObjectCache ? ObjectCache.GetForwardResponse() : new ForwardResponse();
-        foreach (var itemRequest in pbnRequest.itemRequests)
+        foreach (ref readonly var itemRequest in pbnRequest.itemRequests.Span)
         {
-            pbnResponse.itemResponses.Add(new ForwardPerItemResponse(100, SharedExtraResult));
+            pbnResponse.itemResponses = TestProxyPBN.MemoryExtensions.Add(pbnResponse.itemResponses, new ForwardPerItemResponse(100, SharedExtraResult));
         }
         _pbnResponse = pbnResponse;
 
         var gpbRequest = new TestProxy.ForwardRequest();
         gpbRequest.TraceId = pbnRequest.traceId;
-        foreach (var itemRequest in pbnRequest.itemRequests)
+        foreach (ref readonly var itemRequest in pbnRequest.itemRequests.Span)
         {
             gpbRequest.ItemRequests.Add(new TestProxy.ForwardPerItemRequest
             {
@@ -117,7 +117,7 @@ public class SerializeBenchmarks
         _gpbRequest = gpbRequest;
 
         var gpbResponse = new TestProxy.ForwardResponse();
-        foreach (var itemResponse in pbnResponse.itemResponses)
+        foreach (ref readonly var itemResponse in pbnResponse.itemResponses.Span)
         {
             gpbResponse.ItemResponses.Add(new TestProxy.ForwardPerItemResponse
             {
@@ -129,7 +129,7 @@ public class SerializeBenchmarks
 
         var gpbhRequest = new TestProxyHacked.ForwardRequest();
         gpbhRequest.TraceId = pbnRequest.traceId;
-        foreach (var itemRequest in pbnRequest.itemRequests)
+        foreach (ref readonly var itemRequest in pbnRequest.itemRequests.Span)
         {
             gpbhRequest.ItemRequests.Add(new TestProxyHacked.ForwardPerItemRequest
             {
@@ -140,7 +140,7 @@ public class SerializeBenchmarks
         _gpbhRequest = gpbhRequest;
 
         var gpbhResponse = new TestProxyHacked.ForwardResponse();
-        foreach (var itemResponse in pbnResponse.itemResponses)
+        foreach (ref readonly var itemResponse in pbnResponse.itemResponses.Span)
         {
             gpbhResponse.ItemResponses.Add(new TestProxyHacked.ForwardPerItemResponse
             {

@@ -263,16 +263,18 @@ namespace TestProxyPBN
                     case 2:
                         // global::ProtoBuf.Serializers.RepeatedSerializer.CreateList<ForwardPerItemRequest>().ReadRepeated(ref state, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemRequests, this);
                         // manual unroll of ReadRepeated logic, optimizing for this case
-                        var list = value.itemRequests;
+                        var backingArray = MemoryExtensions.GetBackingArray(value.itemRequests, out var count, true);
                         do
                         {
                             var tok = state.StartSubItem();
-                            ForwardPerItemRequest subItem = default;
+                            if (backingArray.Length == count) MemoryExtensions.Extend(ref backingArray);
+                            ref ForwardPerItemRequest subItem = ref backingArray[count++];
+                            subItem = default;
                             Merge(ref state, ref subItem);
-                            list.Add(subItem);
                             state.EndSubItem(tok);
                         }
                         while (state.TryReadFieldHeader(2));
+                        value.itemRequests = new System.Memory<ForwardPerItemRequest>(backingArray, 0, count);
                         continue;
                     case 3:
                         value.requestContextInfo = state.AppendBytes(value.requestContextInfo, s_memoryConverter);
@@ -288,7 +290,7 @@ namespace TestProxyPBN
         void global::ProtoBuf.Serializers.ISerializer<ForwardRequest>.Write(ref global::ProtoBuf.ProtoWriter.State state, ForwardRequest value)
         {
             state.WriteString(1, value.traceId);
-            global::ProtoBuf.Serializers.RepeatedSerializer.CreateList<ForwardPerItemRequest>().WriteRepeated(ref state, 2, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemRequests, this);
+            global::ProtoBuf.Serializers.RepeatedSerializer.CreateMemory<ForwardPerItemRequest>().WriteRepeated(ref state, 2, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemRequests, this);
             if (!value.requestContextInfo.IsEmpty)
             {
                 state.WriteFieldHeader(3, global::ProtoBuf.WireType.String);
@@ -308,16 +310,18 @@ namespace TestProxyPBN
                     case 1:
                         // global::ProtoBuf.Serializers.RepeatedSerializer.CreateList<ForwardPerItemResponse>().ReadRepeated(ref state, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemResponses, this);
                         // manual unroll of ReadRepeated logic, optimizing for this case
-                        var list = value.itemResponses;
+                        var backingArray = MemoryExtensions.GetBackingArray(value.itemResponses, out var count, true);
                         do
                         {
                             var tok = state.StartSubItem();
-                            ForwardPerItemResponse subItem = default;
+                            if (backingArray.Length == count) MemoryExtensions.Extend(ref backingArray);
+                            ref ForwardPerItemResponse subItem = ref backingArray[count++];
+                            subItem = default;
                             Merge(ref state, ref subItem);
-                            list.Add(subItem);
                             state.EndSubItem(tok);
                         }
                         while (state.TryReadFieldHeader(1));
+                        value.itemResponses = new System.Memory<ForwardPerItemResponse>(backingArray, 0, count);
                         continue;
                     case 2:
                         value.routeLatencyInUs = state.ReadInt64();
@@ -335,7 +339,7 @@ namespace TestProxyPBN
 
         void global::ProtoBuf.Serializers.ISerializer<ForwardResponse>.Write(ref global::ProtoBuf.ProtoWriter.State state, ForwardResponse value)
         {
-            global::ProtoBuf.Serializers.RepeatedSerializer.CreateList<ForwardPerItemResponse>().WriteRepeated(ref state, 1, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemResponses, this);
+            global::ProtoBuf.Serializers.RepeatedSerializer.CreateMemory<ForwardPerItemResponse>().WriteRepeated(ref state, 1, global::ProtoBuf.Serializers.SerializerFeatures.OptionPackedDisabled | global::ProtoBuf.Serializers.SerializerFeatures.WireTypeString, value.itemResponses, this);
             if (value.routeLatencyInUs != 0)
             {
                 state.WriteFieldHeader(2, ProtoBuf.WireType.Varint);
@@ -387,7 +391,7 @@ namespace TestProxyPBN
         public string traceId { get; set; } = "";
 
         [global::ProtoBuf.ProtoMember(2)]
-        public global::System.Collections.Generic.List<ForwardPerItemRequest> itemRequests { get; } = new global::System.Collections.Generic.List<ForwardPerItemRequest>();
+        public global::System.Memory<ForwardPerItemRequest> itemRequests { get; set; }
 
         [global::ProtoBuf.ProtoMember(3)]
         public global::System.Memory<byte> requestContextInfo { get; set; }
@@ -423,7 +427,7 @@ namespace TestProxyPBN
             => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
         [global::ProtoBuf.ProtoMember(1)]
-        public global::System.Collections.Generic.List<ForwardPerItemResponse> itemResponses { get; } = new global::System.Collections.Generic.List<ForwardPerItemResponse>();
+        public global::System.Memory<ForwardPerItemResponse> itemResponses { get; set; }
 
         [global::ProtoBuf.ProtoMember(2)]
         public long routeLatencyInUs { get; set; }

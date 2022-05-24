@@ -1,4 +1,4 @@
-﻿// #define HACKUP
+﻿#define HACKUP
 
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;

@@ -39,11 +39,14 @@ namespace GrpcTestService
 
             var e2eWatch = StopwatchWrapper.StartNew();
             var response = new TestProxyPBN.ForwardResponse();
-            foreach (var itemRequest in request.itemRequests)
+            var array = TestProxyPBN.MemoryExtensions.GetBackingArray(response.itemResponses, out var count, true);
+            TestProxyPBN.MemoryExtensions.EnsureCapacity(ref array, count + request.itemRequests.Length);
+            foreach (ref readonly var itemRequest in request.itemRequests.Span)
             {
-                var itemResponse = new TestProxyPBN.ForwardPerItemResponse(100, extraResult);
-                response.itemResponses.Add(itemResponse);
+                if (array.Length == count) TestProxyPBN.MemoryExtensions.Extend(ref array);
+                array[count++] = new TestProxyPBN.ForwardPerItemResponse(100, extraResult);
             }
+            response.itemResponses = new Memory<ForwardPerItemResponse>(array, 0, count);
             e2eWatch.Stop();
             response.routeLatencyInUs = e2eWatch.ElapsedInUs;
             response.routeStartTimeInTicks = e2eWatch.StartTime.Ticks;

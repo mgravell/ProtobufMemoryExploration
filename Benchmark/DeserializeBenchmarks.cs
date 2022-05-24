@@ -3,6 +3,7 @@ using BenchmarkDotNet.Jobs;
 using System;
 using System.Buffers.Text;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using TestProxyPBN;
 
@@ -32,14 +33,14 @@ public class DeserializeBenchmarks
             {
                 traceId = "abc",
                 requestContextInfo = tmp0,
-                itemRequests = { new ForwardPerItemRequest(tmp1, tmp2) }
             };
+            orig.itemRequests = TestProxyPBN.MemoryExtensions.Add(orig.itemRequests, new ForwardPerItemRequest(tmp1, tmp2));
             using var clone = CustomTypeModel.Instance.DeepClone(orig);
             if (clone.traceId != "abc") Throw(nameof(ForwardRequest.traceId));
             if (!clone.requestContextInfo.Span.SequenceEqual(tmp0)) Throw(nameof(ForwardRequest.requestContextInfo));
-            if (clone.itemRequests.Count != 1) Throw(nameof(ForwardRequest.itemRequests));
-            if (!clone.itemRequests[0].itemId.Span.SequenceEqual(tmp1)) Throw(nameof(ForwardPerItemRequest.itemId));
-            if (!clone.itemRequests[0].itemContext.Span.SequenceEqual(tmp2)) Throw(nameof(ForwardPerItemRequest.itemContext));
+            if (clone.itemRequests.Length != 1) Throw(nameof(ForwardRequest.itemRequests));
+            if (!clone.itemRequests.Span[0].itemId.Span.SequenceEqual(tmp1)) Throw(nameof(ForwardPerItemRequest.itemId));
+            if (!clone.itemRequests.Span[0].itemContext.Span.SequenceEqual(tmp2)) Throw(nameof(ForwardPerItemRequest.itemContext));
             Console.WriteLine(nameof(ForwardRequest) + " validated");
         }
         {
@@ -47,14 +48,14 @@ public class DeserializeBenchmarks
             {
                 routeLatencyInUs = 42,
                 routeStartTimeInTicks = 92,
-                itemResponses = { new ForwardPerItemResponse(123F, tmp0) }
             };
+            orig.itemResponses = TestProxyPBN.MemoryExtensions.Add(orig.itemResponses, new ForwardPerItemResponse(123F, tmp0));
             using var clone = CustomTypeModel.Instance.DeepClone(orig);
             if (clone.routeLatencyInUs != 42) Throw(nameof(ForwardResponse.routeLatencyInUs));
             if (clone.routeStartTimeInTicks != 92) Throw(nameof(ForwardResponse.routeStartTimeInTicks));
-            if (clone.itemResponses.Count != 1) Throw(nameof(ForwardResponse.itemResponses));
-            if (clone.itemResponses[0].Result != 123F) Throw(nameof(ForwardPerItemResponse.Result));
-            if (!clone.itemResponses[0].extraResult.Span.SequenceEqual(tmp0)) Throw(nameof(ForwardPerItemResponse.extraResult));
+            if (clone.itemResponses.Length != 1) Throw(nameof(ForwardResponse.itemResponses));
+            if (clone.itemResponses.Span[0].Result != 123F) Throw(nameof(ForwardPerItemResponse.Result));
+            if (!clone.itemResponses.Span[0].extraResult.Span.SequenceEqual(tmp0)) Throw(nameof(ForwardPerItemResponse.extraResult));
             Console.WriteLine(nameof(ForwardResponse) + " validated");
         }
     }
@@ -81,7 +82,7 @@ public class DeserializeBenchmarks
             scratch.Slice(0, bytes).CopyTo(itemId.Span);
             var itemContext = SlabAllocator.Rent(ItemContextSize);
             itemContext.Span.Fill((byte)'b');
-            request.itemRequests.Add(new ForwardPerItemRequest(itemId, itemContext));
+            request.itemRequests = TestProxyPBN.MemoryExtensions.Add(request.itemRequests, new ForwardPerItemRequest(itemId, itemContext));
         }
 
         var requestContextInfo = SlabAllocator.Rent(RequestContextSize + 3);
@@ -96,9 +97,9 @@ public class DeserializeBenchmarks
         requestPayloadMS = new MemoryStream(requestPayloadBA);
 
         using var response = Program.EnableObjectCache ? ObjectCache.GetForwardResponse() : new ForwardResponse();
-        foreach (var itemRequest in request.itemRequests)
+        foreach (ref readonly var itemRequest in request.itemRequests.Span)
         {
-            response.itemResponses.Add(new ForwardPerItemResponse(100, SharedExtraResult));
+            response.itemResponses = TestProxyPBN.MemoryExtensions.Add(response.itemResponses, new ForwardPerItemResponse(100, SharedExtraResult));
         }
         ms.Position = 0;
         ms.SetLength(0);

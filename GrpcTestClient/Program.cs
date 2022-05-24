@@ -1,4 +1,4 @@
-﻿// #define HACKUP
+﻿#define HACKUP
 
 using Grpc.Net.Client;
 using GrpcTestClient;
@@ -93,6 +93,7 @@ namespace GrpcTestService // for shared namespace just for code simplicity
 
                 var client = new TestProxyPBN.TestProxy.TestProxyClient(channel);
                 var request = new TestProxyPBN.ForwardRequest { traceId = Guid.NewGuid().ToString("N") };
+
                 for (int i = 0; i < BatchSize; ++i)
                 {
                     if (!Utf8Formatter.TryFormat(i, scratch, out int bytes))
@@ -102,9 +103,8 @@ namespace GrpcTestService // for shared namespace just for code simplicity
 
                     var itemContext = SlabAllocator.Rent(ItemContextSize);
                     itemContext.Span.Fill((byte)'b');
-                    var itemRequest = new TestProxyPBN.ForwardPerItemRequest(itemId, itemContext);
-                    
-                    request.itemRequests.Add(itemRequest);
+
+                    request.itemRequests = TestProxyPBN.MemoryExtensions.Add(request.itemRequests, new TestProxyPBN.ForwardPerItemRequest(itemId, itemContext));
                 }
 
                 var requestContextInfo = SlabAllocator.Rent(RequestContextSize + 3);

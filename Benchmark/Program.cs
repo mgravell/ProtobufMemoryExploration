@@ -8,7 +8,7 @@ namespace GrpcTestService; // for shared namespace just for code simplicity
 
 static class Program
 {
-    public const bool EnableObjectCache = true;
+    public const bool EnableObjectCache = false;
 
     static void Main(string[] args)
     {
