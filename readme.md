@@ -142,3 +142,42 @@ max   latency in Us: 59561
 99%   latency in Us: 26875
 99.9% latency in Us: 35853
 
+
+---------------------------------------------
+
+Idea: use `Memory<T>` collections (branch: `collections`), growing via array-pool doubling (and copy), and
+disabling the object-pool
+
+|                         Method |     Mean |    Error |   StdDev |    Gen 0 |   Gen 1 | Allocated |
+|------------------------------- |---------:|---------:|---------:|---------:|--------:|----------:|
+|    DeserializeRequestGoogle_BA | 695.6 us | 20.25 us | 59.70 us | 122.0703 | 37.1094 | 770,801 B |
+|    DeserializeRequestGoogle_MS | 770.4 us | 18.45 us | 54.12 us | 128.4180 | 63.9648 | 808,305 B |
+|  DeserializeRequestGoogle_BA_H | 791.0 us | 23.91 us | 70.13 us |  54.6875 |  1.9531 | 346,041 B |
+|  DeserializeRequestGoogle_MS_H | 825.6 us | 25.64 us | 75.61 us |  55.6641 | 21.4844 | 350,780 B |
+|      DeserializeRequestPBN_ROM | 837.8 us | 25.61 us | 75.50 us |        - |       - |     178 B |
+|       DeserializeRequestPBN_MS | 862.8 us | 24.25 us | 71.50 us |        - |       - |     202 B |
+|   DeserializeResponseGoogle_BA | 451.6 us | 11.07 us | 32.12 us |  81.5430 | 23.4375 | 513,961 B |
+|   DeserializeResponseGoogle_MS | 481.1 us | 13.80 us | 40.70 us |  82.5195 | 11.7188 | 518,081 B |
+| DeserializeResponseGoogle_BA_H | 547.9 us | 10.91 us | 28.93 us |  37.1094 |  0.9766 | 234,011 B |
+| DeserializeResponseGoogle_MS_H | 507.7 us | 10.15 us | 27.27 us |  37.5977 |  2.9297 | 238,131 B |
+|     DeserializeResponsePBN_ROM | 549.2 us | 10.98 us | 28.92 us |        - |       - |      67 B |
+|      DeserializeResponsePBN_MS | 530.3 us | 10.60 us | 27.37 us |        - |       - |      91 B |
+
+Using a minimal object-pool implementation (just a `[ThreadStatic]`)
+
+|                         Method |     Mean |    Error |   StdDev |    Gen 0 |   Gen 1 | Allocated |
+|------------------------------- |---------:|---------:|---------:|---------:|--------:|----------:|
+|    DeserializeRequestGoogle_BA | 718.8 us | 21.11 us | 61.57 us | 122.0703 | 37.1094 | 770,801 B |
+|    DeserializeRequestGoogle_MS | 751.0 us | 16.11 us | 47.26 us | 127.9297 | 63.4766 | 808,305 B |
+|  DeserializeRequestGoogle_BA_H | 783.5 us | 25.38 us | 73.23 us |  54.6875 |  1.9531 | 346,041 B |
+|  DeserializeRequestGoogle_MS_H | 780.3 us | 17.38 us | 49.31 us |  55.6641 | 21.4844 | 350,779 B |
+|      DeserializeRequestPBN_ROM | 997.6 us | 19.43 us | 49.80 us |        - |       - |     114 B |
+|       DeserializeRequestPBN_MS | 908.0 us | 27.70 us | 81.68 us |        - |       - |     138 B |
+|   DeserializeResponseGoogle_BA | 467.3 us |  9.29 us | 26.94 us |  81.5430 | 23.4375 | 513,960 B |
+|   DeserializeResponseGoogle_MS | 450.0 us |  8.67 us | 19.93 us |  82.5195 | 11.7188 | 518,080 B |
+| DeserializeResponseGoogle_BA_H | 578.9 us | 13.97 us | 39.63 us |  37.1094 |  1.9531 | 234,011 B |
+| DeserializeResponseGoogle_MS_H | 565.5 us | 11.07 us | 29.35 us |  37.5977 |  1.9531 | 238,131 B |
+|     DeserializeResponsePBN_ROM | 596.9 us | 13.86 us | 40.86 us |        - |       - |      11 B |
+|      DeserializeResponsePBN_MS | 566.5 us | 12.16 us | 35.27 us |        - |       - |      35 B |
+
+
