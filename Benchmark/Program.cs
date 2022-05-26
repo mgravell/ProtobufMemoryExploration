@@ -27,8 +27,9 @@ static class Program
             //obj.DeserializeRequestGoogle_BA();
             //obj.DeserializeResponseGoogle_BA();
             //obj.MeasureSerializeRequestPBN_BW();
-            obj.DeserializeRequestGoogle_MS_H();
-            obj.DeserializeResponseGoogle_MS_H();
+            //obj.DeserializeRequestGoogle_MS_H();
+            //obj.DeserializeResponseGoogle_MS_H();
+            obj.DeserializeHandCranked_BA();
         }
 #endif
     }

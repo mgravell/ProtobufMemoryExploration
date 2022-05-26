@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\GrpcProto\HandCranked.cs" Link="HandCranked.cs" />
     <Compile Include="..\GrpcProto\LeakTrackingObjectPool.cs" Link="LeakTrackingObjectPool.cs" />
     <Compile Include="..\GrpcProto\ObjectCache.cs" Link="ObjectCache.cs" />
     <Compile Include="..\GrpcProto\ObjectPool.cs" Link="ObjectPool.cs" />

@@ -160,14 +160,6 @@ namespace TestProxyPBN
             private readonly byte[] array;
             private int remaining, count;
 
-            private static readonly Action<Memory<byte>> s_recycle = static memory =>
-            {
-                if (MemoryMarshal.TryGetMemoryManager<byte, PerThreadSlab>(memory, out var slab))
-                {
-                    slab.Release();
-                }
-            };
-
             void ReturnArrayToPool()
             {
                 ArrayPool<byte>.Shared.Return(array);

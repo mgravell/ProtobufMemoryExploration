@@ -113,6 +113,21 @@ public class DeserializeBenchmarks
     private static readonly Memory<byte> SharedExtraResult = new byte[32];
 
     [Benchmark]
+    public void DeserializeHandCranked_BA()
+    {
+        var reader = new HandCranked.Reader(requestPayloadBA);
+        try
+        {
+            using var obj = HandCranked.HCForwardRequest.Reader(ref reader);
+            // Console.WriteLine(obj.ItemRequests.Length);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
+    }
+
+    [Benchmark]
     public void DeserializeRequestGoogle_BA()
     {
         _ = TestProxy.ForwardRequest.Parser.ParseFrom(requestPayloadBA);
