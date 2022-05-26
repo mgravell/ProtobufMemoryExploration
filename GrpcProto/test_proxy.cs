@@ -439,6 +439,12 @@ namespace TestProxyPBN
     {
         global::System.Threading.Tasks.ValueTask<ForwardResponse> ForwardAsync(ForwardRequest value, global::ProtoBuf.Grpc.CallContext context = default);
     }
+
+    [global::ProtoBuf.Grpc.Configuration.Service(@"TestProxyPkg.TestProxy")]
+    public partial interface IHandCrankedTestProxy
+    {
+        global::System.Threading.Tasks.ValueTask<HandCranked.HCForwardResponse> ForwardAsync(HandCranked.HCForwardRequest value, global::ProtoBuf.Grpc.CallContext context = default);
+    }
 #endif
 }
 

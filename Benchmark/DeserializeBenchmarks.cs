@@ -134,7 +134,7 @@ public class DeserializeBenchmarks
         try
         {
             using var obj = HandCranked.HCForwardResponse.Reader(ref reader);
-            // Console.WriteLine(obj.ItemRequests.Length);
+            // Console.WriteLine(obj.ItemResponses.Length);
         }
         finally
         {

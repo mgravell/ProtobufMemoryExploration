@@ -151,7 +151,7 @@ public struct Reader : IDisposable
         return TryReadTagSlow(tag);
     }
     private bool TryReadTagSlow(uint tag)
-    { 
+    {
         var snapshot = this;
         if (snapshot.ReadTag() == tag)
         {   // confirmed; update state
@@ -210,7 +210,9 @@ public struct Reader : IDisposable
     {
         if (BitConverter.IsLittleEndian && _index + 4 <= _end)
         {
-            return Unsafe.ReadUnaligned<float>(ref _buffer[_index]);
+            var value = Unsafe.ReadUnaligned<float>(ref _buffer[_index]);
+            _index += 4;
+            return value;
         }
         return ReadSingleSlow();
     }
@@ -340,35 +342,34 @@ message ForwardRequest {
 */
 public delegate T MessageReader<T>(ref Reader reader);
 
-public readonly struct HCForwardRequest : IDisposable
+public sealed class HCForwardRequest : IDisposable
 {
-    private readonly ReadOnlyMemory<char> _traceId;
-    private readonly ReadOnlyMemory<HCForwardPerItemRequest> _itemRequests;
-    private readonly ReadOnlyMemory<byte> _requestContextInfo;
+    private ReadOnlyMemory<char> _traceId;
+    private ReadOnlyMemory<HCForwardPerItemRequest> _itemRequests;
+    private ReadOnlyMemory<byte> _requestContextInfo;
 
-    private static readonly HCForwardRequest Default;
+    internal static readonly MessageReader<HCForwardRequest> Reader = (ref Reader reader) => Merge(null, ref reader);
 
-    internal static readonly MessageReader<HCForwardRequest> Reader = (ref Reader reader) => new HCForwardRequest(in Default, ref reader);
-
-    internal HCForwardRequest(in HCForwardRequest value, ref Reader reader)
+    internal static HCForwardRequest Merge(HCForwardRequest? value, ref Reader reader)
     {
-        this = value;
+        value ??= new(default, default, default);
         uint tag;
         while ((tag = reader.ReadTag()) != 0)
         {
             switch (tag)
             {
                 case (1 << 3) | WireTypes.LengthDelimited:
-                    _traceId = reader.ReadString(_traceId);
+                    value._traceId = reader.ReadString(value._traceId);
                     break;
                 case (2 << 3) | WireTypes.LengthDelimited:
-                    _itemRequests = reader.AppendLengthPrefixed(_itemRequests, HCForwardPerItemRequest.Reader, (2 << 3) | WireTypes.LengthDelimited, 4000);
+                    value._itemRequests = reader.AppendLengthPrefixed(value._itemRequests, HCForwardPerItemRequest.Reader, (2 << 3) | WireTypes.LengthDelimited, 4000);
                     break;
                 case (3 << 3) | WireTypes.LengthDelimited:
-                    _requestContextInfo = reader.ReadBytes(_requestContextInfo);
+                    value._requestContextInfo = reader.ReadBytes(value._requestContextInfo);
                     break;
             }
         }
+        return value;
     }
 
     public ReadOnlyMemory<char> TraceId => _traceId;
@@ -494,35 +495,35 @@ message ForwardResponse {
   int64 routeStartTimeInTicks = 3;
 }
 */
-public readonly struct HCForwardResponse : IDisposable
+public sealed class HCForwardResponse : IDisposable
 {
-    private readonly ReadOnlyMemory<HCForwardPerItemResponse> _itemResponses;
-    private readonly long _routeLatencyInUs;
-    private readonly long _routeStartTimeInTicks;
+    private ReadOnlyMemory<HCForwardPerItemResponse> _itemResponses;
+    private long _routeLatencyInUs;
+    private long _routeStartTimeInTicks;
 
-    private static readonly HCForwardResponse Default;
 
-    internal static readonly MessageReader<HCForwardResponse> Reader = (ref Reader reader) => new HCForwardResponse(in Default, ref reader);
+    internal static readonly MessageReader<HCForwardResponse> Reader = (ref Reader reader) => Merge(null, ref reader);
 
-    internal HCForwardResponse(in HCForwardResponse value, ref Reader reader)
+    internal static HCForwardResponse Merge(HCForwardResponse? value, ref Reader reader)
     {
-        this = value;
+        value ??= new(default, 0, 0);
         uint tag;
         while ((tag = reader.ReadTag()) != 0)
         {
             switch (tag)
             {
                 case (1 << 3) | WireTypes.LengthDelimited:
-                    _itemResponses = reader.AppendLengthPrefixed(_itemResponses, HCForwardPerItemResponse.Reader, (1 << 3) | WireTypes.LengthDelimited, 4000);
+                    value._itemResponses = reader.AppendLengthPrefixed(value._itemResponses, HCForwardPerItemResponse.Reader, (1 << 3) | WireTypes.LengthDelimited, 4000);
                     break;
                 case (2 << 3) | WireTypes.Varint:
-                    _routeLatencyInUs = reader.ReadVarintInt64();
+                    value._routeLatencyInUs = reader.ReadVarintInt64();
                     break;
                 case (3 << 3) | WireTypes.Varint:
-                    _routeStartTimeInTicks = reader.ReadVarintInt64();
+                    value._routeStartTimeInTicks = reader.ReadVarintInt64();
                     break;
             }
         }
+        return value;
     }
 
     public HCForwardResponse(ReadOnlyMemory<HCForwardPerItemResponse> itemResponses, long routeLatencyInUs, long routeStartTimeInTicks)
