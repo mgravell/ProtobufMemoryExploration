@@ -5,11 +5,72 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading;
 
 namespace HandCranked;
 
+
+public struct Writer : IDisposable
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static uint MeasureVarint32(uint value)
+    {
+        if ((value & (~0U << 7)) == 0) return 1; // need to rule out 0 for mod, so: might as well rule out 7-bit
+        if (Lzcnt.IsSupported)
+        {
+            var bits = 32 - Lzcnt.LeadingZeroCount(value);
+            return (bits + 6) / 7;
+        }
+        else
+        {
+            if ((value & (~0U << 7)) == 0) return 1;
+            if ((value & (~0U << 14)) == 0) return 2;
+            if ((value & (~0U << 21)) == 0) return 3;
+            if ((value & (~0U << 28)) == 0) return 4;
+            return 5;
+        }
+    }
+
+    public void Dispose() { }
+
+    internal static uint MeasureVarint64(ulong value)
+    {
+        if ((value & (~0UL << 7)) == 0) return 1; // need to rule out 0 for mod, so: might as well rule out 7-bit
+        if (Lzcnt.X64.IsSupported)
+        {
+            var bits = 64 - (uint)Lzcnt.X64.LeadingZeroCount(value);
+            return (bits + 6) / 7;
+        }
+        else
+        {
+            if ((value & (~0UL << 14)) == 0) return 2;
+            if ((value & (~0UL << 21)) == 0) return 3;
+            if ((value & (~0UL << 28)) == 0) return 4;
+            if ((value & (~0UL << 35)) == 0) return 5;
+            if ((value & (~0UL << 42)) == 0) return 6;
+            if ((value & (~0UL << 49)) == 0) return 7;
+            if ((value & (~0UL << 56)) == 0) return 8;
+            if ((value & (~0UL << 63)) == 0) return 9;
+            return 10;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong MeasureWithLengthPrefix(ulong bytes) => MeasureVarint64(bytes) + bytes;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ulong MeasureWithLengthPrefix(uint bytes) => MeasureVarint64(bytes) + (ulong)bytes;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong MeasureWithLengthPrefix(ReadOnlyMemory<char> value)
+        => MeasureWithLengthPrefix((uint)Reader.UTF8.GetByteCount(value.Span));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong MeasureWithLengthPrefix(ReadOnlyMemory<byte> value)
+        => MeasureWithLengthPrefix((uint)value.Length);
+}
 public struct Reader : IDisposable
 {
     public void Dispose()
@@ -28,7 +89,7 @@ public struct Reader : IDisposable
     long Position => _positionBase + _index;
     long _objectEnd;
     bool _returnToArrayPool;
-    private static readonly UTF8Encoding UTF8 = new(false);
+    internal static readonly UTF8Encoding UTF8 = new(false);
 
     public Reader(Memory<byte> value)
     {
@@ -425,6 +486,29 @@ public sealed class HCForwardRequest : IDisposable
         _requestContextInfo.Release();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong Measure(HCForwardRequest value)
+    {
+        ulong length = 0;
+        if (!value._traceId.IsEmpty)
+        {
+            length += 1 + Writer.MeasureWithLengthPrefix(value._traceId);
+        }
+        if (!value._itemRequests.IsEmpty)
+        {
+            length += 1 * (uint)value._itemRequests.Length;
+            foreach (ref readonly var item in value._itemRequests.Span)
+            {
+                length += Writer.MeasureWithLengthPrefix(HCForwardPerItemRequest.Measure(item));
+            }
+        }
+        if (!value._requestContextInfo.IsEmpty)
+        {
+            length += 1 + Writer.MeasureWithLengthPrefix((uint)value._requestContextInfo.Length);
+        }
+        return length;
+    }
+
     public HCForwardRequest(ReadOnlyMemory<char> traceId, ReadOnlyMemory<HCForwardPerItemRequest> itemRequests, ReadOnlyMemory<byte> requestContextInfo)
     {
         _traceId = traceId;
@@ -485,6 +569,21 @@ public readonly struct HCForwardPerItemRequest : IDisposable
         _itemId.Release();
         _itemContext.Release();
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong Measure(in HCForwardPerItemRequest value)
+    {
+        ulong length = 0;
+        if (!value._itemId.IsEmpty)
+        {
+            length += 1 + Writer.MeasureWithLengthPrefix((uint)value._itemId.Length);
+        }
+        if (!value._itemContext.IsEmpty)
+        {
+            length += 1 + Writer.MeasureWithLengthPrefix((uint)value._itemContext.Length);
+        }
+        return length;
+    }
 }
 
 /*
@@ -526,6 +625,21 @@ public readonly struct HCForwardPerItemResponse : IDisposable
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong Measure(in HCForwardPerItemResponse value)
+    {
+        ulong length = 0;
+        if (value._result != 0)
+        {
+            length += 1 + 4;
+        }
+        if (!value._extraResult.IsEmpty)
+        {
+            length += 1 + Writer.MeasureWithLengthPrefix((uint)value._extraResult.Length);
+        }
+        return length;
+    }
+
     public HCForwardPerItemResponse(float result, ReadOnlyMemory<byte> extraResult)
     {
         _result = result;
@@ -553,6 +667,28 @@ public sealed class HCForwardResponse : IDisposable
     private ReadOnlyMemory<HCForwardPerItemResponse> _itemResponses;
     private long _routeLatencyInUs;
     private long _routeStartTimeInTicks;
+
+    internal static ulong Measure(HCForwardResponse value)
+    {
+        ulong length = 0;
+        if (!value.ItemResponses.IsEmpty)
+        {
+            length += 1 * (uint)value.ItemResponses.Length;
+            foreach (ref readonly var item in value._itemResponses.Span)
+            {
+                length += Writer.MeasureWithLengthPrefix(HCForwardPerItemResponse.Measure(item));
+            }
+        }
+        if (value._routeLatencyInUs != 0)
+        {
+            length += 1 + Writer.MeasureVarint64((ulong)value._routeLatencyInUs);
+        }
+        if (value._routeStartTimeInTicks != 0)
+        {
+            length += 1 + Writer.MeasureVarint64((ulong)value._routeStartTimeInTicks);
+        }
+        return length;
+    }
 
     internal static readonly MessageReader<HCForwardResponse> Reader = ReadSingle;
     internal static readonly MessageReader<HCForwardResponse> Reader2 = ReadSingle2;

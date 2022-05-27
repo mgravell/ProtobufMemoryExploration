@@ -1,11 +1,13 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using Google.Protobuf;
+using HandCranked;
 using ProtoBuf;
 using System;
 using System.Buffers;
 using System.Buffers.Text;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using TestProxyPBN;
@@ -71,6 +73,9 @@ public class SerializeBenchmarks
     TestProxy.ForwardResponse _gpbResponse;
     TestProxyHacked.ForwardRequest _gpbhRequest;
     TestProxyHacked.ForwardResponse _gpbhResponse;
+    HCForwardRequest _hcRequest;
+    HCForwardResponse _hcResponse;
+    
 
     [GlobalSetup]
     public void Setup()
@@ -106,6 +111,7 @@ public class SerializeBenchmarks
 
         var gpbRequest = new TestProxy.ForwardRequest();
         gpbRequest.TraceId = pbnRequest.traceId;
+        gpbRequest.RequestContextInfo = ByteString.CopyFrom(pbnRequest.requestContextInfo.Span);
         foreach (var itemRequest in pbnRequest.itemRequests)
         {
             gpbRequest.ItemRequests.Add(new TestProxy.ForwardPerItemRequest
@@ -129,6 +135,7 @@ public class SerializeBenchmarks
 
         var gpbhRequest = new TestProxyHacked.ForwardRequest();
         gpbhRequest.TraceId = pbnRequest.traceId;
+        gpbhRequest.RequestContextInfo = pbnRequest.requestContextInfo;
         foreach (var itemRequest in pbnRequest.itemRequests)
         {
             gpbhRequest.ItemRequests.Add(new TestProxyHacked.ForwardPerItemRequest
@@ -149,6 +156,25 @@ public class SerializeBenchmarks
             });
         }
         _gpbhResponse = gpbhResponse;
+
+
+
+        var hcRequests = SlabAllocator<HCForwardPerItemRequest>.Rent(pbnRequest.itemRequests.Count);
+        var index = 0;
+        foreach (var itemRequest in pbnRequest.itemRequests)
+        {
+            hcRequests.Span[index++] = new HCForwardPerItemRequest(itemRequest.itemId, itemRequest.itemContext);
+        }
+        _hcRequest = new HCForwardRequest(pbnRequest.traceId.AsMemory(), hcRequests, pbnRequest.requestContextInfo);
+
+
+        var hcResponses = SlabAllocator<HCForwardPerItemResponse>.Rent(pbnResponse.itemResponses.Count);
+        index = 0;
+        foreach (var itemResponse in pbnResponse.itemResponses)
+        {
+            hcResponses.Span[index++] = new HCForwardPerItemResponse(itemResponse.Result, itemResponse.extraResult);
+        }
+        _hcResponse = new HCForwardResponse(hcResponses, 0, 0);
     }
 
     readonly MemoryStream _out = new MemoryStream();
@@ -158,67 +184,90 @@ public class SerializeBenchmarks
         _out.SetLength(0);
         return _out;
     }
+
     [Benchmark]
-    public void SerializeRequestGoogle_MS()
+    public int MeasureRequestGoogle()
     {
-        _gpbRequest.WriteTo(Empty());
+        return _gpbhRequest.CalculateSize();
     }
     [Benchmark]
-    public void SerializeRequestGoogle_MS_H()
+    public ulong MeasureRequestHandCranked()
     {
-        _gpbhRequest.WriteTo(Empty());
+        return HCForwardRequest.Measure(_hcRequest);
     }
 
     [Benchmark]
-    public void SerializeRequestPBN_MS()
+    public int MeasureResponseGoogle()
     {
-        CustomTypeModel.Instance.Serialize(Empty(), _pbnRequest);
+        return _gpbResponse.CalculateSize();
     }
-
     [Benchmark]
-    public void SerializeResponseGoogle_MS()
+    public ulong MeasureResponseHandCranked()
     {
-        _gpbResponse.WriteTo(Empty());
+        return HCForwardResponse.Measure(_hcResponse);
     }
 
-    [Benchmark]
-    public void SerializeResponseGoogle_MS_H()
-    {
-        _gpbhResponse.WriteTo(Empty());
-    }
+    //[Benchmark]
+    //public void SerializeRequestGoogle_MS()
+    //{
+    //    _gpbRequest.WriteTo(Empty());
+    //}
+    //[Benchmark]
+    //public void SerializeRequestGoogle_MS_H()
+    //{
+    //    _gpbhRequest.WriteTo(Empty());
+    //}
 
-    [Benchmark]
-    public void SerializeResponsePBN_MS()
-    {
-        CustomTypeModel.Instance.Serialize(Empty(), _pbnResponse);
-    }
+    //[Benchmark]
+    //public void SerializeRequestPBN_MS()
+    //{
+    //    CustomTypeModel.Instance.Serialize(Empty(), _pbnRequest);
+    //}
 
-    [Benchmark]
-    public void MeasureSerializeRequestGPB_BW()
-    {   // simulate what happens in generated __Helper_SerializeMessage
-        _bw.Clear();
-        _gpbRequest.CalculateSize();
-        MessageExtensions.WriteTo(_gpbRequest, _bw);
-    }
+    //[Benchmark]
+    //public void SerializeResponseGoogle_MS()
+    //{
+    //    _gpbResponse.WriteTo(Empty());
+    //}
 
-    [Benchmark]
-    public void MeasureSerializeRequestGPB_BW_H()
-    {   // simulate what happens in generated __Helper_SerializeMessage
-        _bw.Clear();
-        _gpbhRequest.CalculateSize();
-        MessageExtensions.WriteTo(_gpbhRequest, _bw);
-    }
+    //[Benchmark]
+    //public void SerializeResponseGoogle_MS_H()
+    //{
+    //    _gpbhResponse.WriteTo(Empty());
+    //}
 
-    [Benchmark]
-    public void MeasureSerializeRequestPBN_BW()
-    {
-        // simulate what happens in ContextualSerialize
-        _bw.Clear();
-        IMeasuredProtoOutput<IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
-        using var measured = measuredSerializer.Measure(_pbnRequest);
-        int len = checked((int)measured.Length);
-        measuredSerializer.Serialize(measured, _bw);
-    }
+    //[Benchmark]
+    //public void SerializeResponsePBN_MS()
+    //{
+    //    CustomTypeModel.Instance.Serialize(Empty(), _pbnResponse);
+    //}
+
+    //[Benchmark]
+    //public void MeasureSerializeRequestGPB_BW()
+    //{   // simulate what happens in generated __Helper_SerializeMessage
+    //    _bw.Clear();
+    //    _gpbRequest.CalculateSize();
+    //    MessageExtensions.WriteTo(_gpbRequest, _bw);
+    //}
+
+    //[Benchmark]
+    //public void MeasureSerializeRequestGPB_BW_H()
+    //{   // simulate what happens in generated __Helper_SerializeMessage
+    //    _bw.Clear();
+    //    _gpbhRequest.CalculateSize();
+    //    MessageExtensions.WriteTo(_gpbhRequest, _bw);
+    //}
+
+    //[Benchmark]
+    //public void MeasureSerializeRequestPBN_BW()
+    //{
+    //    // simulate what happens in ContextualSerialize
+    //    _bw.Clear();
+    //    IMeasuredProtoOutput<IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
+    //    using var measured = measuredSerializer.Measure(_pbnRequest);
+    //    int len = checked((int)measured.Length);
+    //    measuredSerializer.Serialize(measured, _bw);
+    //}
 
     MyBufferWriter _bw = new MyBufferWriter();
 

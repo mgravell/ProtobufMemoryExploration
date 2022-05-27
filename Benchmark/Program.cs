@@ -1,5 +1,6 @@
 ﻿#define BDN
 
+using System;
 using System.Runtime.CompilerServices;
 
 [module: SkipLocalsInit]
@@ -16,9 +17,9 @@ static class Program
 
         BenchmarkDotNet.Running.BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 #else
-        var obj = new DeserializeBenchmarks();
+        var obj = new SerializeBenchmarks();
         obj.Setup();
-        for (int i = 0; i < 50000; i++)
+        for (int i = 0; i < 1; i++)
         {
             if ((i % 100) == 0) System.Console.Write(".");
             //obj.DeserializeRequestPBN_ROM();
@@ -29,8 +30,15 @@ static class Program
             //obj.MeasureSerializeRequestPBN_BW();
             //obj.DeserializeRequestGoogle_MS_H();
             //obj.DeserializeResponseGoogle_MS_H();
-            obj.DeserializeHandCrankedRequest_BA();
-            obj.DeserializeHandCrankedResponse_BA();
+            //obj.DeserializeHandCrankedRequest_BA();
+            //obj.DeserializeHandCrankedResponse_BA();
+
+            Console.WriteLine("a");
+            System.Console.WriteLine(obj.MeasureRequestGoogle());
+            System.Console.WriteLine(obj.MeasureRequestHandCranked());
+
+            System.Console.WriteLine(obj.MeasureResponseGoogle());
+            System.Console.WriteLine(obj.MeasureResponseHandCranked());
         }
 #endif
     }

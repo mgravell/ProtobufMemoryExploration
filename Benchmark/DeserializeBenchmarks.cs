@@ -178,74 +178,74 @@ public class DeserializeBenchmarks
         _ = TestProxy.ForwardRequest.Parser.ParseFrom(requestPayloadBA);
     }
 
-    [Benchmark]
-    public void DeserializeRequestGoogle_MS()
-    {
-        requestPayloadMS!.Position = 0;
-        _ = TestProxy.ForwardRequest.Parser.ParseFrom(requestPayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeRequestGoogle_MS()
+    //{
+    //    requestPayloadMS!.Position = 0;
+    //    _ = TestProxy.ForwardRequest.Parser.ParseFrom(requestPayloadMS);
+    //}
 
-    [Benchmark]
-    public void DeserializeRequestGoogle_BA_H()
-    {
-        using var obj = TestProxyHacked.ForwardRequest.Parser.ParseFrom(requestPayloadBA);
-    }
+    //[Benchmark]
+    //public void DeserializeRequestGoogle_BA_H()
+    //{
+    //    using var obj = TestProxyHacked.ForwardRequest.Parser.ParseFrom(requestPayloadBA);
+    //}
 
-    [Benchmark]
-    public void DeserializeRequestGoogle_MS_H()
-    {
-        requestPayloadMS!.Position = 0;
-        using var obj = TestProxyHacked.ForwardRequest.Parser.ParseFrom(requestPayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeRequestGoogle_MS_H()
+    //{
+    //    requestPayloadMS!.Position = 0;
+    //    using var obj = TestProxyHacked.ForwardRequest.Parser.ParseFrom(requestPayloadMS);
+    //}
 
-    [Benchmark]
-    public void DeserializeRequestPBN_ROM()
-    {
-        using var obj = CustomTypeModel.Instance.Deserialize<ForwardRequest>(requestPayloadROM);
-    }
-    [Benchmark]
-    public void DeserializeRequestPBN_MS()
-    {
-        requestPayloadMS!.Position = 0;
-        using var obj = CustomTypeModel.Instance.Deserialize<ForwardRequest>(requestPayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeRequestPBN_ROM()
+    //{
+    //    using var obj = CustomTypeModel.Instance.Deserialize<ForwardRequest>(requestPayloadROM);
+    //}
+    //[Benchmark]
+    //public void DeserializeRequestPBN_MS()
+    //{
+    //    requestPayloadMS!.Position = 0;
+    //    using var obj = CustomTypeModel.Instance.Deserialize<ForwardRequest>(requestPayloadMS);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponseGoogle_BA()
-    {
-        _ = TestProxy.ForwardResponse.Parser.ParseFrom(responsePayloadBA);
-    }
+    //[Benchmark]
+    //public void DeserializeResponseGoogle_BA()
+    //{
+    //    _ = TestProxy.ForwardResponse.Parser.ParseFrom(responsePayloadBA);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponseGoogle_MS()
-    {
-        responsePayloadMS!.Position = 0;
-        _ = TestProxy.ForwardResponse.Parser.ParseFrom(responsePayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeResponseGoogle_MS()
+    //{
+    //    responsePayloadMS!.Position = 0;
+    //    _ = TestProxy.ForwardResponse.Parser.ParseFrom(responsePayloadMS);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponseGoogle_BA_H()
-    {
-        using var obj = TestProxyHacked.ForwardResponse.Parser.ParseFrom(responsePayloadBA);
-    }
+    //[Benchmark]
+    //public void DeserializeResponseGoogle_BA_H()
+    //{
+    //    using var obj = TestProxyHacked.ForwardResponse.Parser.ParseFrom(responsePayloadBA);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponseGoogle_MS_H()
-    {
-        responsePayloadMS!.Position = 0;
-        using var obj = TestProxyHacked.ForwardResponse.Parser.ParseFrom(responsePayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeResponseGoogle_MS_H()
+    //{
+    //    responsePayloadMS!.Position = 0;
+    //    using var obj = TestProxyHacked.ForwardResponse.Parser.ParseFrom(responsePayloadMS);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponsePBN_ROM()
-    {
-        using var obj = CustomTypeModel.Instance.Deserialize<ForwardResponse>(responsePayloadROM);
-    }
+    //[Benchmark]
+    //public void DeserializeResponsePBN_ROM()
+    //{
+    //    using var obj = CustomTypeModel.Instance.Deserialize<ForwardResponse>(responsePayloadROM);
+    //}
 
-    [Benchmark]
-    public void DeserializeResponsePBN_MS()
-    {
-        responsePayloadMS!.Position = 0;
-        using var obj = CustomTypeModel.Instance.Deserialize<ForwardResponse>(responsePayloadMS);
-    }
+    //[Benchmark]
+    //public void DeserializeResponsePBN_MS()
+    //{
+    //    responsePayloadMS!.Position = 0;
+    //    using var obj = CustomTypeModel.Instance.Deserialize<ForwardResponse>(responsePayloadMS);
+    //}
 }
