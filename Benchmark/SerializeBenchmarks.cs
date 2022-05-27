@@ -8,6 +8,7 @@ using System.Buffers;
 using System.Buffers.Text;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using TestProxyPBN;
@@ -242,13 +243,48 @@ public class SerializeBenchmarks
     //    CustomTypeModel.Instance.Serialize(Empty(), _pbnResponse);
     //}
 
-    //[Benchmark]
-    //public void MeasureSerializeRequestGPB_BW()
-    //{   // simulate what happens in generated __Helper_SerializeMessage
-    //    _bw.Clear();
-    //    _gpbRequest.CalculateSize();
-    //    MessageExtensions.WriteTo(_gpbRequest, _bw);
-    //}
+    [Benchmark]
+    public long MeasureSerializeRequestGPB_BW()
+    {   // simulate what happens in generated __Helper_SerializeMessage
+        _bw.Clear();
+        var expected = _gpbRequest.CalculateSize();
+        MessageExtensions.WriteTo(_gpbRequest, _bw);
+        return Assert(_bw.Total, expected);
+    }
+
+    [Benchmark]
+    public long MeasureSerializeRequestHC_BW()
+    {   // simulate what happens in generated __Helper_SerializeMessage
+        _bw.Clear();
+        var expected = HCForwardRequest.Measure(_hcRequest);
+        var writer = new Writer(_bw);
+        try
+        {
+            HCForwardRequest.WriterInst(_hcRequest, ref writer);
+        }
+        finally
+        {
+            writer.Dispose();
+        }
+        return Assert(_bw.Total, (long)expected);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static long Assert(long x, long y)
+    {
+        if (x != y) Throw(x, y);
+        return x;
+        static void Throw(long x, long y) => throw new InvalidOperationException($"length error: {x} vs {y}");
+    }
+
+    [Benchmark]
+    public long MeasureSerializeResponseGPB_BW()
+    {   // simulate what happens in generated __Helper_SerializeMessage
+        _bw.Clear();
+        var expected = _gpbResponse.CalculateSize();
+        MessageExtensions.WriteTo(_gpbResponse, _bw);
+        return Assert(_bw.Total, expected);
+    }
 
     //[Benchmark]
     //public void MeasureSerializeRequestGPB_BW_H()
@@ -276,6 +312,8 @@ public class SerializeBenchmarks
         byte[] _arr = Array.Empty<byte>();
         int _space;
 
+        public int Total => _arr.Length - _space;
+
         public void Clear() => _space = _arr.Length;
         public void Advance(int count) => _space -= count;
 
@@ -295,13 +333,13 @@ public class SerializeBenchmarks
 
         private void Resize(int sizeHint)
         {
-            var usedBytes = _arr.Length - _space;
+            var usedBytes = Total;
             var newMinBytes = usedBytes + sizeHint;
             var newArr = ArrayPool<byte>.Shared.Rent(newMinBytes);
             Buffer.BlockCopy(_arr, 0, newArr, 0, usedBytes);
             ArrayPool<byte>.Shared.Return(_arr);
             _arr = newArr;
-            _space = newArr.Length - _space;
+            _space = newArr.Length - usedBytes;
         }
     }
 

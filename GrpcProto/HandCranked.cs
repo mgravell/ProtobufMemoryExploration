@@ -14,6 +14,38 @@ namespace HandCranked;
 
 public struct Writer : IDisposable
 {
+    private byte[] _buffer;
+    int _index, _end, _start;
+    private long _positionBase;
+    private object _state;
+
+    public Writer(IBufferWriter<byte> target)
+    {
+        _state = target;
+        _positionBase = 0;
+
+        var memory = target.GetMemory(300000);
+        if (MemoryMarshal.TryGetArray<byte>(memory, out var segment))
+        {
+            _buffer = segment.Array!;
+            _start = _index = segment.Offset;
+            _end = segment.Offset + segment.Count;
+        }
+        else
+        {
+            throw new InvalidOperationException();
+        }
+    }
+
+    private void Flush()
+    {
+        if (_state is IBufferWriter<byte> bw)
+        {
+            bw.Advance(_index - _start);
+            _end = _index = 0;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint MeasureVarint32(uint value)
     {
@@ -33,7 +65,7 @@ public struct Writer : IDisposable
         }
     }
 
-    public void Dispose() { }
+    public void Dispose() => Flush();
 
     internal static uint MeasureVarint64(ulong value)
     {
@@ -70,6 +102,119 @@ public struct Writer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static ulong MeasureWithLengthPrefix(ReadOnlyMemory<byte> value)
         => MeasureWithLengthPrefix((uint)value.Length);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void WriteTag(uint value) => WriteVarintUInt32(value);
+
+    private void WriteVarintUInt32(uint value)
+    {
+        if (_index + 5 <= _end)
+        {
+            if (Lzcnt.IsSupported)
+            {
+                var bits = 32 - Lzcnt.LeadingZeroCount(value);
+                const uint HI_BIT = 0b10000000;
+                switch ((bits + 6) / 7)
+                {
+                    case 0:
+                    case 1:
+                        Debug.Assert(MeasureVarint32(value) == 1);
+                        _buffer[_index++] = (byte)value;
+                        return;
+                    case 2:
+                        Debug.Assert(MeasureVarint32(value) == 2);
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 7);
+                        return;
+                    case 3:
+                        Debug.Assert(MeasureVarint32(value) == 3);
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 14);
+                        return;
+                    case 4:
+                        Debug.Assert(MeasureVarint32(value) == 4);
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 21);
+                        return;
+                    default:
+                        Debug.Assert(MeasureVarint32(value) == 5);
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 28);
+                        return;
+                }
+            }
+            else
+            {
+                Throw();
+                static void Throw() => throw new NotImplementedException();
+            }
+        }
+        else
+        {
+            WriteVarintUInt32Slow(value);
+        }
+    }
+
+    private void WriteVarintUInt32Slow(uint value)
+        => throw new NotImplementedException();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void WriteString(ReadOnlyMemory<char> value)
+        => WriteString(value.Span);
+
+    internal void WriteString(ReadOnlySpan<char> value)
+    {
+        var bytes = Reader.UTF8.GetByteCount(value);
+        WriteVarintUInt32((uint)bytes);
+        if (_index + bytes <= _end)
+        {
+            var actualBytes = Reader.UTF8.GetBytes(value, new Span<byte>(_buffer, _index, bytes));
+            Debug.Assert(actualBytes == bytes);
+            _index += bytes;
+        }
+        else
+        {
+            WriteStringBytesSlow(value);
+        }
+    }
+    private void WriteStringBytesSlow(ReadOnlySpan<char> value)
+        => throw new NotImplementedException();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void WriteVarintUInt64(ulong value)
+    {
+        if ((value >> 32) == 0) WriteVarintUInt32((uint)value);
+        else WriteVarintUInt64Full(value);
+    }
+    private void WriteVarintUInt64Full(ulong value)
+        => throw new NotImplementedException();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void WriteBytes(ReadOnlyMemory<byte> value)
+        => WriteBytes(value.Span);
+
+    internal void WriteBytes(ReadOnlySpan<byte> value)
+    {
+        var bytes = value.Length;
+        WriteVarintUInt32((uint)bytes);
+        if (_index + bytes <= _end)
+        {
+            value.CopyTo(new Span<byte>(_buffer, _index, bytes));
+            _index += bytes;
+        }
+        else
+        {
+            WriteBytesBytesSlow(value);
+        }
+    }
+    private void WriteBytesBytesSlow(ReadOnlySpan<byte> value)
+        => throw new NotImplementedException();
 }
 public struct Reader : IDisposable
 {
@@ -412,6 +557,7 @@ message ForwardRequest {
 }
 */
 public delegate T MessageReader<T>(ref Reader reader);
+public delegate void MessageWriter<T>(T value, ref Writer reader);
 
 public sealed class HCForwardRequest : IDisposable
 {
@@ -420,11 +566,37 @@ public sealed class HCForwardRequest : IDisposable
     private ReadOnlyMemory<byte> _requestContextInfo;
 
     internal static readonly MessageReader<HCForwardRequest> Reader = ReadSingle;
+    internal static readonly MessageWriter<HCForwardRequest> WriterInst = WriteSingle;
+
     internal static readonly MessageReader<HCForwardRequest> Reader2 = ReadSingle2;
     internal static readonly unsafe delegate*<ref Reader, HCForwardRequest> UnsafeReader = &ReadSingle;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static HCForwardRequest ReadSingle(ref Reader reader) => Merge(null, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void WriteSingle(HCForwardRequest value, ref Writer writer)
+    {
+        if (!value._traceId.IsEmpty)
+        {
+            writer.WriteTag((1 << 3) | WireTypes.LengthDelimited);
+            writer.WriteString(value._traceId);
+        }
+        if (!value._itemRequests.IsEmpty)
+        {
+            foreach (ref readonly var item in value._itemRequests.Span)
+            {
+                writer.WriteTag((2 << 3) | WireTypes.LengthDelimited);
+                writer.WriteVarintUInt64(HCForwardPerItemRequest.Measure(item));
+                HCForwardPerItemRequest.WriteSingle(in item, ref writer);
+            }
+        }
+        if (!value._requestContextInfo.IsEmpty)
+        {
+            writer.WriteTag((3 << 3) | WireTypes.LengthDelimited);
+            writer.WriteBytes(value._requestContextInfo);
+        }
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static HCForwardRequest Merge(HCForwardRequest? value, ref Reader reader)
@@ -450,7 +622,7 @@ public sealed class HCForwardRequest : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static HCForwardRequest ReadSingle2(ref Reader reader) => Merge2(null, ref reader);
+    private static HCForwardRequest ReadSingle2(ref Reader reader) => Merge2(null, ref reader);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static unsafe HCForwardRequest Merge2(HCForwardRequest? value, ref Reader reader)
@@ -583,6 +755,20 @@ public readonly struct HCForwardPerItemRequest : IDisposable
             length += 1 + Writer.MeasureWithLengthPrefix((uint)value._itemContext.Length);
         }
         return length;
+    }
+
+    internal static void WriteSingle(in HCForwardPerItemRequest value, ref Writer writer)
+    {
+        if (!value._itemId.IsEmpty)
+        {
+            writer.WriteTag((1 << 3) | WireTypes.LengthDelimited);
+            writer.WriteBytes(value._itemId);
+        }
+        if (!value._itemContext.IsEmpty)
+        {
+            writer.WriteTag((2 << 3) | WireTypes.LengthDelimited);
+            writer.WriteBytes(value._itemContext);
+        }
     }
 }
 

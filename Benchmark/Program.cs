@@ -34,11 +34,10 @@ static class Program
             //obj.DeserializeHandCrankedResponse_BA();
 
             Console.WriteLine("a");
-            System.Console.WriteLine(obj.MeasureRequestGoogle());
-            System.Console.WriteLine(obj.MeasureRequestHandCranked());
-
-            System.Console.WriteLine(obj.MeasureResponseGoogle());
-            System.Console.WriteLine(obj.MeasureResponseHandCranked());
+            Console.WriteLine(obj.MeasureSerializeRequestGPB_BW());
+            Console.WriteLine(obj.MeasureSerializeResponseGPB_BW());
+            Console.WriteLine(obj.MeasureSerializeRequestHC_BW());
+            Console.WriteLine(obj.MeasureSerializeRequestHC_BW());
         }
 #endif
     }

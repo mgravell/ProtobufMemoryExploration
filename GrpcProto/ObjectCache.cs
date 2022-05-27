@@ -229,6 +229,7 @@ namespace TestProxyPBN
         void IMemoryManager.Return(Memory<byte> value)
             => value.TryRelease();
     }
+
     partial class SomeSerializer // implementation code
     {
         // provide our our memory API
