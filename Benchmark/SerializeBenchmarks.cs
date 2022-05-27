@@ -189,7 +189,7 @@ public class SerializeBenchmarks
     [Benchmark]
     public int MeasureRequestGoogle()
     {
-        return _gpbhRequest.CalculateSize();
+        return _gpbRequest.CalculateSize();
     }
     [Benchmark]
     public ulong MeasureRequestHandCranked()
