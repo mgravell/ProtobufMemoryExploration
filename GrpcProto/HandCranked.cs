@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Buffers;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -163,31 +164,18 @@ public struct Reader : IDisposable
 
     public ReadOnlyMemory<T> AppendLengthPrefixed<T>(ReadOnlyMemory<T> itemRequests, MessageReader<T> reader, uint tag, int sizeHint)
     {
-        Memory<T> target;
+        Memory<T> target = SlabAllocator<T>.Expand(itemRequests, sizeHint);
         int count = itemRequests.Length;
-        if (count == 0)
-        {
-            target = SlabAllocator<T>.Rent(sizeHint);
-        }
-        else
-        {
-            target = SlabAllocator<T>.Rent(count + sizeHint);
-            itemRequests.CopyTo(target);
-        }
-        itemRequests.Release();
 
         var oldEnd = _objectEnd;
         var targetSpan = target.Span;
         do
         {
-            var length = ReadLengthPrefix();
-            _objectEnd = Position + length;
+            var subItemLength = ReadLengthPrefix();
+            _objectEnd = Position + subItemLength;
             if (count == targetSpan.Length)
             {
-                var expanded = SlabAllocator<T>.Rent(Math.Min(2 * count, count + 64000));
-                target.CopyTo(expanded);
-                target.Release();
-                target = expanded;
+                target = SlabAllocator<T>.Expand(target, sizeHint);;
                 targetSpan = target.Span;
             }
             targetSpan[count++] = reader(ref this);
@@ -200,10 +188,32 @@ public struct Reader : IDisposable
         return target.Slice(0, count);
     }
 
-    //public unsafe ReadOnlyMemory<T> Append<T>(ReadOnlyMemory<T> itemRequests, delegate*<ref Reader, T> reader, int sizeHint = 8)
-    //{
-    //    throw new NotImplementedException();
-    //}
+    [Browsable(false), EditorBrowsable(EditorBrowsableState.Never)]
+    public unsafe ReadOnlyMemory<T> UnsafeAppendLengthPrefixed<T>(ReadOnlyMemory<T> itemRequests, delegate*<ref Reader, T> reader, uint tag, int sizeHint)
+    {
+        Memory<T> target = SlabAllocator<T>.Expand(itemRequests, sizeHint);
+        int count = itemRequests.Length;
+
+        var oldEnd = _objectEnd;
+        var targetSpan = target.Span;
+        do
+        {
+            var subItemLength = ReadLengthPrefix();
+            _objectEnd = Position + subItemLength;
+            if (count == targetSpan.Length)
+            {
+                target = SlabAllocator<T>.Expand(target, sizeHint); ;
+                targetSpan = target.Span;
+            }
+            targetSpan[count++] = reader(ref this);
+            _objectEnd = oldEnd;
+        } while (TryReadTag(tag));
+
+        Debug.Assert(oldEnd >= Position);
+
+        target.TryRecover(count);
+        return target.Slice(0, count);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float ReadSingle()
@@ -348,8 +358,14 @@ public sealed class HCForwardRequest : IDisposable
     private ReadOnlyMemory<HCForwardPerItemRequest> _itemRequests;
     private ReadOnlyMemory<byte> _requestContextInfo;
 
-    internal static readonly MessageReader<HCForwardRequest> Reader = (ref Reader reader) => Merge(null, ref reader);
+    internal static readonly MessageReader<HCForwardRequest> Reader = ReadSingle;
+    internal static readonly MessageReader<HCForwardRequest> Reader2 = ReadSingle2;
+    internal static readonly unsafe delegate*<ref Reader, HCForwardRequest> UnsafeReader = &ReadSingle;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HCForwardRequest ReadSingle(ref Reader reader) => Merge(null, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static HCForwardRequest Merge(HCForwardRequest? value, ref Reader reader)
     {
         value ??= new(default, default, default);
@@ -363,6 +379,32 @@ public sealed class HCForwardRequest : IDisposable
                     break;
                 case (2 << 3) | WireTypes.LengthDelimited:
                     value._itemRequests = reader.AppendLengthPrefixed(value._itemRequests, HCForwardPerItemRequest.Reader, (2 << 3) | WireTypes.LengthDelimited, 4000);
+                    break;
+                case (3 << 3) | WireTypes.LengthDelimited:
+                    value._requestContextInfo = reader.ReadBytes(value._requestContextInfo);
+                    break;
+            }
+        }
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static HCForwardRequest ReadSingle2(ref Reader reader) => Merge2(null, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static unsafe HCForwardRequest Merge2(HCForwardRequest? value, ref Reader reader)
+    {
+        value ??= new(default, default, default);
+        uint tag;
+        while ((tag = reader.ReadTag()) != 0)
+        {
+            switch (tag)
+            {
+                case (1 << 3) | WireTypes.LengthDelimited:
+                    value._traceId = reader.ReadString(value._traceId);
+                    break;
+                case (2 << 3) | WireTypes.LengthDelimited:
+                    value._itemRequests = reader.UnsafeAppendLengthPrefixed(value._itemRequests, HCForwardPerItemRequest.UnsafeReader, (2 << 3) | WireTypes.LengthDelimited, 4000);
                     break;
                 case (3 << 3) | WireTypes.LengthDelimited:
                     value._requestContextInfo = reader.ReadBytes(value._requestContextInfo);
@@ -405,8 +447,13 @@ public readonly struct HCForwardPerItemRequest : IDisposable
 
     private static readonly HCForwardPerItemRequest Default;
 
-    internal static readonly MessageReader<HCForwardPerItemRequest> Reader = (ref Reader reader) => new HCForwardPerItemRequest(in Default, ref reader);
+    internal static readonly MessageReader<HCForwardPerItemRequest> Reader = ReadSingle;
+    internal static readonly unsafe delegate*<ref Reader, HCForwardPerItemRequest> UnsafeReader = &ReadSingle;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HCForwardPerItemRequest ReadSingle(ref Reader reader) => new HCForwardPerItemRequest(in Default, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal HCForwardPerItemRequest(in HCForwardPerItemRequest value, ref Reader reader)
     {
         this = value;
@@ -453,7 +500,13 @@ public readonly struct HCForwardPerItemResponse : IDisposable
 
     private static readonly HCForwardPerItemResponse Default;
 
-    internal static readonly MessageReader<HCForwardPerItemResponse> Reader = (ref Reader reader) => new HCForwardPerItemResponse(in Default, ref reader);
+    internal static readonly MessageReader<HCForwardPerItemResponse> Reader = ReadSingle;
+    internal static readonly unsafe delegate*<ref Reader, HCForwardPerItemResponse> UnsafeReader = &ReadSingle;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HCForwardPerItemResponse ReadSingle(ref Reader reader) => new HCForwardPerItemResponse(in Default, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
 
     internal HCForwardPerItemResponse(in HCForwardPerItemResponse value, ref Reader reader)
     {
@@ -501,9 +554,17 @@ public sealed class HCForwardResponse : IDisposable
     private long _routeLatencyInUs;
     private long _routeStartTimeInTicks;
 
+    internal static readonly MessageReader<HCForwardResponse> Reader = ReadSingle;
+    internal static readonly MessageReader<HCForwardResponse> Reader2 = ReadSingle2;
+    internal static readonly unsafe delegate*<ref Reader, HCForwardResponse> UnsafeReader = &ReadSingle;
 
-    internal static readonly MessageReader<HCForwardResponse> Reader = (ref Reader reader) => Merge(null, ref reader);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HCForwardResponse ReadSingle(ref Reader reader) => Merge(null, ref reader);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static HCForwardResponse ReadSingle2(ref Reader reader) => Merge2(null, ref reader);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static HCForwardResponse Merge(HCForwardResponse? value, ref Reader reader)
     {
         value ??= new(default, 0, 0);
@@ -514,6 +575,29 @@ public sealed class HCForwardResponse : IDisposable
             {
                 case (1 << 3) | WireTypes.LengthDelimited:
                     value._itemResponses = reader.AppendLengthPrefixed(value._itemResponses, HCForwardPerItemResponse.Reader, (1 << 3) | WireTypes.LengthDelimited, 4000);
+                    break;
+                case (2 << 3) | WireTypes.Varint:
+                    value._routeLatencyInUs = reader.ReadVarintInt64();
+                    break;
+                case (3 << 3) | WireTypes.Varint:
+                    value._routeStartTimeInTicks = reader.ReadVarintInt64();
+                    break;
+            }
+        }
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal unsafe static HCForwardResponse Merge2(HCForwardResponse? value, ref Reader reader)
+    {
+        value ??= new(default, 0, 0);
+        uint tag;
+        while ((tag = reader.ReadTag()) != 0)
+        {
+            switch (tag)
+            {
+                case (1 << 3) | WireTypes.LengthDelimited:
+                    value._itemResponses = reader.UnsafeAppendLengthPrefixed(value._itemResponses, HCForwardPerItemResponse.UnsafeReader, (1 << 3) | WireTypes.LengthDelimited, 4000);
                     break;
                 case (2 << 3) | WireTypes.Varint:
                     value._routeLatencyInUs = reader.ReadVarintInt64();
@@ -580,6 +664,36 @@ static class MemoryTools
 }
 internal static class SlabAllocator<T>
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Memory<T> Expand(ReadOnlyMemory<T> value, int sizeHint)
+    {
+        int countHint, length;
+        if (MemoryMarshal.TryGetMemoryManager<T, SlabAllocator<T>.PerThreadSlab>(value, out var manager, out var start, out length))
+        {
+            countHint = Math.Max(length, sizeHint); // double, or size hint: whichever is bigger
+            if (manager.TryExpandForCurrentThread(start, length, countHint))
+            {
+                return manager.Memory.Slice(start, length + countHint);
+            }
+            var newValue = Rent(value.Length + countHint);
+            value.CopyTo(newValue);
+            manager.Release();
+            return newValue;
+        }
+        else
+        {
+            length = value.Length;
+            countHint = Math.Max(length, sizeHint); // double, or size hint: whichever is bigger
+            if (length == 0)
+            {
+                return Rent(countHint);
+            }
+            var newValue = Rent(value.Length + countHint);
+            value.CopyTo(newValue);
+            return newValue;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Memory<T> Rent(int length)
     {
@@ -714,6 +828,22 @@ internal static class SlabAllocator<T>
                     _remaining += length - count;
                 }
             }
+        }
+
+        internal bool TryExpandForCurrentThread(int start, int length, int count)
+        {
+            if (ReferenceEquals(this, s_ThreadLocal) && count <= _remaining)
+            {
+                var localEnd = _array.Length - _remaining;
+                var remoteEnd = start + length;
+                if (localEnd == remoteEnd)
+                {
+                    // then we can claw some back!
+                    _remaining -= count;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

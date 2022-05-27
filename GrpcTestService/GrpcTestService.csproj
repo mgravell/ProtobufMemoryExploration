@@ -21,6 +21,7 @@
 		<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
 		<RetainVMGarbageCollection>true</RetainVMGarbageCollection>
 		<TieredCompilation>false</TieredCompilation>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>

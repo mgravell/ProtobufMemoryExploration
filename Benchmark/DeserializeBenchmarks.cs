@@ -128,12 +128,42 @@ public class DeserializeBenchmarks
     }
 
     [Benchmark]
+    public void DeserializeHandCrankedRequest_BA_U()
+    {
+        var reader = new HandCranked.Reader(requestPayloadBA);
+        try
+        {
+            using var obj = HandCranked.HCForwardRequest.Reader2(ref reader);
+            // Console.WriteLine(obj.ItemRequests.Length);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
+    }
+
+    [Benchmark]
     public void DeserializeHandCrankedResponse_BA()
     {
         var reader = new HandCranked.Reader(responsePayloadBA);
         try
         {
             using var obj = HandCranked.HCForwardResponse.Reader(ref reader);
+            // Console.WriteLine(obj.ItemResponses.Length);
+        }
+        finally
+        {
+            reader.Dispose();
+        }
+    }
+
+    [Benchmark]
+    public void DeserializeHandCrankedResponse_BA_U()
+    {
+        var reader = new HandCranked.Reader(responsePayloadBA);
+        try
+        {
+            using var obj = HandCranked.HCForwardResponse.Reader2(ref reader);
             // Console.WriteLine(obj.ItemResponses.Length);
         }
         finally
