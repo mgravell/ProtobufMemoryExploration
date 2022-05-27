@@ -876,6 +876,7 @@ public sealed class HCForwardResponse : IDisposable
         return length;
     }
 
+    //internal static readonly MessageWriter<HCForwardResponse> WriterInst = WriteSingle;
     internal static readonly MessageReader<HCForwardResponse> Reader = ReadSingle;
     internal static readonly MessageReader<HCForwardResponse> Reader2 = ReadSingle2;
     internal static readonly unsafe delegate*<ref Reader, HCForwardResponse> UnsafeReader = &ReadSingle;
