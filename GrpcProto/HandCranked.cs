@@ -215,6 +215,21 @@ public struct Writer : IDisposable
     }
     private void WriteBytesBytesSlow(ReadOnlySpan<byte> value)
         => throw new NotImplementedException();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteSingle(float value)
+    {
+        if (BitConverter.IsLittleEndian && _index + 4 <= _end)
+        {
+            Unsafe.WriteUnaligned<float>(ref _buffer[_index], value);
+            _index += 4;
+        }
+        else
+        {
+            WriteSingleSlow(value);
+        }
+    }
+    private void WriteSingleSlow(float value) => throw new NotImplementedException();
 }
 public struct Reader : IDisposable
 {
@@ -839,6 +854,20 @@ public readonly struct HCForwardPerItemResponse : IDisposable
     {
         _extraResult.Release();
     }
+
+    internal static void WriteSingle(in HCForwardPerItemResponse value, ref Writer writer)
+    {
+        if (value._result != 0)
+        {
+            writer.WriteTag((1 << 3) | WireTypes.Fixed32);
+            writer.WriteSingle(value._result);
+        }
+        if (!value._extraResult.IsEmpty)
+        {
+            writer.WriteTag((2 << 3) | WireTypes.LengthDelimited);
+            writer.WriteBytes(value._extraResult);
+        }
+    }
 }
 
 /*
@@ -876,7 +905,30 @@ public sealed class HCForwardResponse : IDisposable
         return length;
     }
 
-    //internal static readonly MessageWriter<HCForwardResponse> WriterInst = WriteSingle;
+    internal static void WriteSingle(HCForwardResponse value, ref Writer writer)
+    {
+        if (!value.ItemResponses.IsEmpty)
+        {
+            foreach (ref readonly var item in value._itemResponses.Span)
+            {
+                writer.WriteTag((1 << 3) | WireTypes.LengthDelimited);
+                writer.WriteVarintUInt64(HCForwardPerItemResponse.Measure(item));
+                HCForwardPerItemResponse.WriteSingle(in item, ref writer);
+            }
+        }
+        if (value._routeLatencyInUs != 0)
+        {
+            writer.WriteTag((2 << 3) | WireTypes.Varint);
+            writer.WriteVarintUInt64((ulong)value._routeLatencyInUs);
+        }
+        if (value._routeStartTimeInTicks != 0)
+        {
+            writer.WriteTag((3 << 3) | WireTypes.Varint);
+            writer.WriteVarintUInt64((ulong)value._routeStartTimeInTicks);
+        }
+    }
+
+    internal static readonly MessageWriter<HCForwardResponse> WriterInst = WriteSingle;
     internal static readonly MessageReader<HCForwardResponse> Reader = ReadSingle;
     internal static readonly MessageReader<HCForwardResponse> Reader2 = ReadSingle2;
     internal static readonly unsafe delegate*<ref Reader, HCForwardResponse> UnsafeReader = &ReadSingle;

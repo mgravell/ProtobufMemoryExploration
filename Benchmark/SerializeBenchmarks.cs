@@ -269,22 +269,22 @@ public class SerializeBenchmarks
         return Assert(_bw.Total, (long)expected);
     }
 
-    //[Benchmark]
-    //public long MeasureSerializeResponseHC_BW()
-    //{   // simulate what happens in generated __Helper_SerializeMessage
-    //    _bw.Clear();
-    //    var expected = HCForwardResponse.Measure(_hcResponse);
-    //    var writer = new Writer(_bw);
-    //    try
-    //    {
-    //        HCForwardResponse.WriterInst(_hcResponse, ref writer);
-    //    }
-    //    finally
-    //    {
-    //        writer.Dispose();
-    //    }
-    //    return Assert(_bw.Total, (long)expected);
-    //}
+    [Benchmark]
+    public long MeasureSerializeResponseHC_BW()
+    {   // simulate what happens in generated __Helper_SerializeMessage
+        _bw.Clear();
+        var expected = HCForwardResponse.Measure(_hcResponse);
+        var writer = new Writer(_bw);
+        try
+        {
+            HCForwardResponse.WriterInst(_hcResponse, ref writer);
+        }
+        finally
+        {
+            writer.Dispose();
+        }
+        return Assert(_bw.Total, (long)expected);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static long Assert(long x, long y)

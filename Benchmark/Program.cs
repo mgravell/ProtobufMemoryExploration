@@ -35,9 +35,9 @@ static class Program
 
             Console.WriteLine("a");
             Console.WriteLine(obj.MeasureSerializeRequestGPB_BW());
+            Console.WriteLine(obj.MeasureSerializeRequestHC_BW());
             Console.WriteLine(obj.MeasureSerializeResponseGPB_BW());
-            Console.WriteLine(obj.MeasureSerializeRequestHC_BW());
-            Console.WriteLine(obj.MeasureSerializeRequestHC_BW());
+            Console.WriteLine(obj.MeasureSerializeResponseHC_BW());
         }
 #endif
     }
