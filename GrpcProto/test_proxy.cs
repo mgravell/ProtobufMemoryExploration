@@ -15,33 +15,33 @@ namespace TestProxyPBN
     {
         static readonly string __ServiceName = "TestProxyPkg.TestProxy";
 
-        static class SerializerCache<T>
-        {
-            public static readonly global::System.Action<T, grpc::SerializationContext> Serializer = (value, ctx) =>
-            {
-                global::ProtoBuf.IMeasuredProtoOutput<global::System.Buffers.IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
-                using var measured = measuredSerializer.Measure(value);
-                int len = checked((int)measured.Length);
-                ctx.SetPayloadLength(len);
-                measuredSerializer.Serialize(measured, ctx.GetBufferWriter());
-                ctx.Complete();
-            };
-            public static readonly global::System.Func<grpc::DeserializationContext, T> Deserializer = ctx =>
-            {
-                var buffer = ctx.PayloadAsReadOnlySequence();
-                return CustomTypeModel.Instance.Deserialize<T>(buffer);
-            };
-        }
+        //static class SerializerCache<T>
+        //{
+        //    public static readonly global::System.Action<T, grpc::SerializationContext> Serializer = (value, ctx) =>
+        //    {
+        //        global::ProtoBuf.IMeasuredProtoOutput<global::System.Buffers.IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
+        //        using var measured = measuredSerializer.Measure(value);
+        //        int len = checked((int)measured.Length);
+        //        ctx.SetPayloadLength(len);
+        //        measuredSerializer.Serialize(measured, ctx.GetBufferWriter());
+        //        ctx.Complete();
+        //    };
+        //    public static readonly global::System.Func<grpc::DeserializationContext, T> Deserializer = ctx =>
+        //    {
+        //        var buffer = ctx.PayloadAsReadOnlySequence();
+        //        return CustomTypeModel.Instance.Deserialize<T>(buffer);
+        //    };
+        //}
 
         [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-        static readonly grpc::Marshaller<global::TestProxyPBN.ForwardRequest> __Marshaller_TestProxyPkg_ForwardRequest = grpc::Marshallers.Create(
-            SerializerCache<global::TestProxyPBN.ForwardRequest>.Serializer, SerializerCache<global::TestProxyPBN.ForwardRequest>.Deserializer);
+        static readonly grpc::Marshaller<global::HandCranked.HCForwardRequest> __Marshaller_TestProxyPkg_ForwardRequest = grpc::Marshallers.Create(
+            global::HandCranked.HCForwardRequest.ContextSerialize, global::HandCranked.HCForwardRequest.ContextDeserialize);
         [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-        static readonly grpc::Marshaller<global::TestProxyPBN.ForwardResponse> __Marshaller_TestProxyPkg_ForwardResponse = grpc::Marshallers.Create(
-            SerializerCache<global::TestProxyPBN.ForwardResponse>.Serializer, SerializerCache<global::TestProxyPBN.ForwardResponse>.Deserializer);
+        static readonly grpc::Marshaller<global::HandCranked.HCForwardResponse> __Marshaller_TestProxyPkg_ForwardResponse = grpc::Marshallers.Create(
+            global::HandCranked.HCForwardResponse.ContextSerialize, global::HandCranked.HCForwardResponse.ContextDeserialize);
 
         [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-        static readonly grpc::Method<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse> __Method_Forward = new grpc::Method<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse>(
+        static readonly grpc::Method<global::HandCranked.HCForwardRequest, global::HandCranked.HCForwardResponse> __Method_Forward = new grpc::Method<global::HandCranked.HCForwardRequest, global::HandCranked.HCForwardResponse>(
             grpc::MethodType.Unary,
             __ServiceName,
             "Forward",
@@ -53,7 +53,7 @@ namespace TestProxyPBN
         public abstract partial class TestProxyBase
         {
             [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-            public virtual global::System.Threading.Tasks.Task<global::TestProxyPBN.ForwardResponse> Forward(global::TestProxyPBN.ForwardRequest request, grpc::ServerCallContext context)
+            public virtual global::System.Threading.Tasks.Task<global::HandCranked.HCForwardResponse> Forward(global::HandCranked.HCForwardRequest request, grpc::ServerCallContext context)
             {
                 throw new grpc::RpcException(new grpc::Status(grpc::StatusCode.Unimplemented, ""));
             }
@@ -87,22 +87,22 @@ namespace TestProxyPBN
             }
 
             [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-            public virtual global::TestProxyPBN.ForwardResponse Forward(global::TestProxyPBN.ForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+            public virtual global::HandCranked.HCForwardResponse Forward(global::HandCranked.HCForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
             {
                 return Forward(request, new grpc::CallOptions(headers, deadline, cancellationToken));
             }
             [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-            public virtual global::TestProxyPBN.ForwardResponse Forward(global::TestProxyPBN.ForwardRequest request, grpc::CallOptions options)
+            public virtual global::HandCranked.HCForwardResponse Forward(global::HandCranked.HCForwardRequest request, grpc::CallOptions options)
             {
                 return CallInvoker.BlockingUnaryCall(__Method_Forward, null, options, request);
             }
             [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-            public virtual grpc::AsyncUnaryCall<global::TestProxyPBN.ForwardResponse> ForwardAsync(global::TestProxyPBN.ForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
+            public virtual grpc::AsyncUnaryCall<global::HandCranked.HCForwardResponse> ForwardAsync(global::HandCranked.HCForwardRequest request, grpc::Metadata headers = null, global::System.DateTime? deadline = null, global::System.Threading.CancellationToken cancellationToken = default(global::System.Threading.CancellationToken))
             {
                 return ForwardAsync(request, new grpc::CallOptions(headers, deadline, cancellationToken));
             }
             [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
-            public virtual grpc::AsyncUnaryCall<global::TestProxyPBN.ForwardResponse> ForwardAsync(global::TestProxyPBN.ForwardRequest request, grpc::CallOptions options)
+            public virtual grpc::AsyncUnaryCall<global::HandCranked.HCForwardResponse> ForwardAsync(global::HandCranked.HCForwardRequest request, grpc::CallOptions options)
             {
                 return CallInvoker.AsyncUnaryCall(__Method_Forward, null, options, request);
             }
@@ -130,7 +130,7 @@ namespace TestProxyPBN
         [global::System.CodeDom.Compiler.GeneratedCode("grpc_csharp_plugin", null)]
         public static void BindService(grpc::ServiceBinderBase serviceBinder, TestProxyBase serviceImpl)
         {
-            serviceBinder.AddMethod(__Method_Forward, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::TestProxyPBN.ForwardRequest, global::TestProxyPBN.ForwardResponse>(serviceImpl.Forward));
+            serviceBinder.AddMethod(__Method_Forward, serviceImpl == null ? null : new grpc::UnaryServerMethod<global::HandCranked.HCForwardRequest, global::HandCranked.HCForwardResponse>(serviceImpl.Forward));
         }
     }
 

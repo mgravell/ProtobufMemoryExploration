@@ -1,4 +1,4 @@
-﻿// #define HACKUP
+﻿#define HACKUP
 //#define HANDCRANK
 
 using Grpc.Net.Client;
@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -225,7 +226,7 @@ namespace GrpcTestService // for shared namespace just for code simplicity
                 static void Throw() => throw new InvalidOperationException("Unable to format " + nameof(ForwardPerItemRequest.itemId));
 
                 var client = new TestProxyPBN.TestProxy.TestProxyClient(channel);
-                var request = new TestProxyPBN.ForwardRequest { traceId = Guid.NewGuid().ToString("N") };
+                var itemRequests = SlabAllocator<HCForwardPerItemRequest>.Rent(BatchSize);
                 for (int i = 0; i < BatchSize; ++i)
                 {
                     if (!Utf8Formatter.TryFormat(i, scratch, out int bytes))
@@ -235,20 +236,34 @@ namespace GrpcTestService // for shared namespace just for code simplicity
 
                     var itemContext = SlabAllocator.Rent(ItemContextSize);
                     itemContext.Span.Fill((byte)'b');
-                    var itemRequest = new TestProxyPBN.ForwardPerItemRequest(itemId, itemContext);
-                    
-                    request.itemRequests.Add(itemRequest);
+
+                    itemRequests.Span[i] = new HCForwardPerItemRequest(itemId, itemContext);
                 }
 
                 var requestContextInfo = SlabAllocator.Rent(RequestContextSize + 3);
                 requestContextInfo.Span.Slice(0, RequestContextSize).Fill((byte)'a');
                 end.CopyTo(requestContextInfo.Span.Slice(RequestContextSize));
-                request.requestContextInfo = requestContextInfo;
+
+                var request = new HCForwardRequest(Guid.NewGuid().ToString("N").AsMemory(), itemRequests, requestContextInfo);
+
+                static void OverwriteTraceId(HCForwardRequest value)
+                {
+                    var span = MemoryMarshal.AsMemory(value.TraceId).Span; // naughty
+                    if (Guid.NewGuid().TryFormat(span, out var written, "N") && written == span.Length)
+                    {
+                        // fine, we got away with it!
+                    }
+                    else
+                    {
+                        Throw();
+                    }
+                    static void Throw() => throw new InvalidOperationException();
+                }
 
                 // warm up like establishing connection
                 while (true)
                 {
-                    request.traceId = Guid.NewGuid().ToString("N");
+                    OverwriteTraceId(request);
                     var ret = SendRequest(client, request, true);
                     if (ret > 0)
                     {
@@ -268,7 +283,7 @@ namespace GrpcTestService // for shared namespace just for code simplicity
                 while (true)
                 {
                     totalCount++;
-                    request.traceId = Guid.NewGuid().ToString("N");
+                    OverwriteTraceId(request);
                     var latencyInUs = SendRequest(client, request, false);
                     if (latencyInUs > 0)
                     {
@@ -301,7 +316,7 @@ namespace GrpcTestService // for shared namespace just for code simplicity
             }
         }
 
-        private static long SendRequest(TestProxyPBN.TestProxy.TestProxyClient client, TestProxyPBN.ForwardRequest request, bool logResponse)
+        private static long SendRequest(TestProxyPBN.TestProxy.TestProxyClient client, HCForwardRequest request, bool logResponse)
         {
             long latencyInUs = -1;
             try
@@ -316,10 +331,17 @@ namespace GrpcTestService // for shared namespace just for code simplicity
 
                 if (logResponse)
                 {
-                    Console.WriteLine($"Response is {JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true })}");
+                    try
+                    {
+                        Console.WriteLine($"Response is {JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true })}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine(ex.Message);
+                    }
                 }
 
-                var gapLatencyInUs = watch.ElapsedInUs - response.routeLatencyInUs;
+                var gapLatencyInUs = watch.ElapsedInUs - response.RouteLatencyInUs;
 
                 /*
                 if (gapLatencyInUs > 5000)

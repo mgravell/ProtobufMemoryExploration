@@ -1,5 +1,6 @@
 ﻿#nullable enable
 // #define USE_SPANS
+using Grpc.Core;
 using System;
 using System.Buffers;
 using System.ComponentModel;
@@ -71,7 +72,6 @@ public
             bw.Advance(_index - _start);
             _end = _index = _start = 0;
 #endif
-
         }
     }
 
@@ -240,7 +240,108 @@ public
         else WriteVarintUInt64Full(value);
     }
     private void WriteVarintUInt64Full(ulong value)
-        => throw new NotImplementedException();
+    {
+        if (_index + 5 <= _end)
+        {
+            if (Lzcnt.X64.IsSupported)
+            {
+                var bits = 64 - Lzcnt.X64.LeadingZeroCount(value);
+                const uint HI_BIT = 0b10000000;
+
+                switch ((bits + 6) / 7)
+                {
+                    case 0:
+                    case 1:
+                        _buffer[_index++] = (byte)value;
+                        return;
+                    case 2:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 7);
+                        return;
+                    case 3:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 14);
+                        return;
+                    case 4:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 21);
+                        return;
+                    case 5:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 28);
+                        return;
+                    case 6:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 28) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 35);
+                        return;
+                    case 7:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 28) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 35) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 42);
+                        return;
+                    case 8:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 28) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 35) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 42) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 49);
+                        return;
+                    case 9:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 28) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 35) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 42) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 49) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 56);
+                        return;
+                    default:
+                        _buffer[_index++] = (byte)(value | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 7) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 14) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 21) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 28) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 35) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 42) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 49) | HI_BIT);
+                        _buffer[_index++] = (byte)((value >> 56) | HI_BIT);
+                        _buffer[_index++] = (byte)(value >> 63);
+                        return;
+                }
+            }
+
+            else
+            {
+                Throw();
+                static void Throw() => throw new NotImplementedException();
+            }
+        }
+        else
+        {
+            WriteVarintUInt64Slow(value);
+        }
+    }
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void WriteVarintUInt64Slow(ulong value) => throw new NotImplementedException();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void WriteBytes(ReadOnlyMemory<byte> value)
@@ -302,7 +403,16 @@ public struct Reader : IDisposable
     bool _returnToArrayPool;
     internal static readonly UTF8Encoding UTF8 = new(false);
 
-    public Reader(Memory<byte> value)
+    public Reader(byte[] buffer, int offset, int count)
+    {
+        _buffer = buffer;
+        _index = offset;
+        _end = offset + count;
+        _returnToArrayPool = false;
+        _positionBase = 0;
+        _objectEnd = _end;
+    }
+    public Reader(ReadOnlyMemory<byte> value)
     {
         if (MemoryMarshal.TryGetArray<byte>(value, out var segment))
         {
@@ -531,7 +641,18 @@ public struct Reader : IDisposable
         return ReadVarintUInt64Slow();
     }
 
-    private ulong ReadVarintUInt64Slow() => throw new NotImplementedException();
+    private ulong ReadVarintUInt64Slow()
+    {
+        ulong value = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            ulong b = ReadRawByte();
+            value |= (b & 0x7F) << (7 * i);
+            if ((b & 0x80) == 0) return value;
+        }
+        return ThrowTooManyBytes();
+        static ulong ThrowTooManyBytes() => throw new InvalidOperationException("Too many bytes!");
+    }
     internal uint ReadVarintUInt32()
     {
         if (_index + 5 <= _end)
@@ -716,6 +837,54 @@ public sealed class HCForwardRequest : IDisposable
     public ReadOnlyMemory<char> TraceId => _traceId;
     public ReadOnlyMemory<HCForwardPerItemRequest> ItemRequests => _itemRequests;
     public ReadOnlyMemory<byte> RequestContextInfo => _requestContextInfo;
+
+    //    public static readonly global::System.Action<T, grpc::SerializationContext> Serializer = (value, ctx) =>
+    //    {
+    //        global::ProtoBuf.IMeasuredProtoOutput<global::System.Buffers.IBufferWriter<byte>> measuredSerializer = CustomTypeModel.Instance;
+    //        using var measured = measuredSerializer.Measure(value);
+    //        int len = checked((int)measured.Length);
+    //        ctx.SetPayloadLength(len);
+    //        measuredSerializer.Serialize(measured, ctx.GetBufferWriter());
+    //        ctx.Complete();
+    //    };
+    //    public static readonly global::System.Func<grpc::DeserializationContext, T> Deserializer = ctx =>
+    //    {
+    //        var buffer = ctx.PayloadAsReadOnlySequence();
+    //        return CustomTypeModel.Instance.Deserialize<T>(buffer);
+    //    };
+    public static void ContextSerialize(HCForwardRequest value, SerializationContext ctx)
+    {
+        var len = checked((int)Measure(value));
+        ctx.SetPayloadLength(len);
+        var writer = new Writer(ctx.GetBufferWriter());
+        WriteSingle(value, ref writer);
+        writer.Dispose();
+        ctx.Complete();
+    }
+
+    public static HCForwardRequest ContextDeserialize(DeserializationContext ctx)
+    {
+        var ros = ctx.PayloadAsReadOnlySequence();
+        if (!ros.IsSingleSegment) return Slow(ros);
+
+        var reader = new Reader(ros.First);
+        var value = ReadSingle2(ref reader);
+        reader.Dispose();
+        return value;
+
+        static HCForwardRequest Slow(ReadOnlySequence<byte> payload)
+        {
+            var len = checked((int)payload.Length);
+            var oversized = ArrayPool<byte>.Shared.Rent(len);
+            payload.CopyTo(oversized);
+
+            var reader = new Reader(oversized, 0, len);
+            var value = ReadSingle2(ref reader);
+            reader.Dispose();
+            ArrayPool<byte>.Shared.Return(oversized);
+            return value;
+        }
+    }
 
     public void Dispose()
     {
@@ -1046,6 +1215,40 @@ public sealed class HCForwardResponse : IDisposable
     public ReadOnlyMemory<HCForwardPerItemResponse> ItemResponses => _itemResponses;
     public long RouteLatencyInUs => _routeLatencyInUs;
     public long RouteStartTimeInTicks => _routeStartTimeInTicks;
+
+    public static void ContextSerialize(HCForwardResponse value, SerializationContext ctx)
+    {
+        var len = checked((int)Measure(value));
+        ctx.SetPayloadLength(len);
+        var writer = new Writer(ctx.GetBufferWriter());
+        WriteSingle(value, ref writer);
+        writer.Dispose();
+        ctx.Complete();
+    }
+
+    public static HCForwardResponse ContextDeserialize(DeserializationContext ctx)
+    {
+        var ros = ctx.PayloadAsReadOnlySequence();
+        if (!ros.IsSingleSegment) return Slow(ros);
+
+        var reader = new Reader(ros.First);
+        var value = ReadSingle2(ref reader);
+        reader.Dispose();
+        return value;
+
+        static HCForwardResponse Slow(ReadOnlySequence<byte> payload)
+        {
+            var len = checked((int)payload.Length);
+            var oversized = ArrayPool<byte>.Shared.Rent(len);
+            payload.CopyTo(oversized);
+
+            var reader = new Reader(oversized, 0, len);
+            var value = ReadSingle2(ref reader);
+            reader.Dispose();
+            ArrayPool<byte>.Shared.Return(oversized);
+            return value;
+        }
+    }
 
     public void Dispose()
     {

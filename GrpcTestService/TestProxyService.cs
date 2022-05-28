@@ -1,6 +1,7 @@
 ﻿#define HACKUP
 
 using Grpc.Core;
+using HandCranked;
 using ProtoBuf.Grpc;
 using System;
 using System.Text;
@@ -18,7 +19,7 @@ namespace GrpcTestService
 
         private const int ExtraResultSize = 32;
         private static byte[] extraResult = Encoding.ASCII.GetBytes(new string('b', ExtraResultSize));
-        public override Task<TestProxyPBN.ForwardResponse> Forward(TestProxyPBN.ForwardRequest request, ServerCallContext context)
+        public override Task<HCForwardResponse> Forward(HCForwardRequest request, ServerCallContext context)
         {
             var gen0After = GC.CollectionCount(0);
             var gen1After = GC.CollectionCount(1);
@@ -38,15 +39,15 @@ namespace GrpcTestService
             */
 
             var e2eWatch = StopwatchWrapper.StartNew();
-            var response = new TestProxyPBN.ForwardResponse();
-            foreach (var itemRequest in request.itemRequests)
+            var itemResponses = SlabAllocator<HCForwardPerItemResponse>.Rent(request.ItemRequests.Length);
+            var span = itemResponses.Span;
+            int index = 0;
+            foreach (ref readonly var itemRequest in request.ItemRequests.Span)
             {
-                var itemResponse = new TestProxyPBN.ForwardPerItemResponse(100, extraResult);
-                response.itemResponses.Add(itemResponse);
+                span[index++] = new HCForwardPerItemResponse(100, extraResult);
             }
             e2eWatch.Stop();
-            response.routeLatencyInUs = e2eWatch.ElapsedInUs;
-            response.routeStartTimeInTicks = e2eWatch.StartTime.Ticks;
+            var response = new HCForwardResponse(itemResponses, e2eWatch.ElapsedInUs, e2eWatch.StartTime.Ticks);
 
             request.Dispose(); // we can dispose the request now that we're done with it
             if (Program.EnableObjectCache)
@@ -108,10 +109,10 @@ namespace GrpcTestService
 #endif
     internal static class Foo
     {
-        public static void RegisterForDispose(ForwardResponse response, ServerCallContext context)
+        public static void RegisterForDispose(IDisposable obj, ServerCallContext context)
         {
             var httpContext = context.GetHttpContext();
-            httpContext.Response.RegisterForDispose(response);
+            httpContext.Response.RegisterForDispose(obj);
         }
     }
 }
