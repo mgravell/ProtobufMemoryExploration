@@ -1,4 +1,5 @@
 ﻿#nullable enable
+// #define USE_SPANS
 using System;
 using System.Buffers;
 using System.ComponentModel;
@@ -12,10 +13,25 @@ using System.Threading;
 namespace HandCranked;
 
 
-public struct Writer : IDisposable
+public
+#if USE_SPANS
+    ref
+#endif
+    struct Writer
+#if !USE_SPANS
+    : IDisposable
+#endif
 {
+#if USE_SPANS
+    private Span<byte> _buffer;
+#else
     private byte[] _buffer;
-    int _index, _end, _start;
+#endif
+
+    int _index, _end;
+#if !USE_SPANS
+    int _start;
+#endif
     private long _positionBase;
     private object _state;
 
@@ -24,7 +40,13 @@ public struct Writer : IDisposable
         _state = target;
         _positionBase = 0;
 
-        var memory = target.GetMemory(300000);
+        const int BUFFER_SIZE = 300000;
+#if USE_SPANS
+        _buffer = target.GetSpan(BUFFER_SIZE);
+        _index = 0;
+        _end = _buffer.Length;
+#else
+        var memory = target.GetMemory(BUFFER_SIZE);
         if (MemoryMarshal.TryGetArray<byte>(memory, out var segment))
         {
             _buffer = segment.Array!;
@@ -35,25 +57,31 @@ public struct Writer : IDisposable
         {
             throw new InvalidOperationException();
         }
+#endif
     }
 
     private void Flush()
     {
         if (_state is IBufferWriter<byte> bw)
         {
-            bw.Advance(_index - _start);
+#if USE_SPANS
+            bw.Advance(_index);
             _end = _index = 0;
+#else
+            bw.Advance(_index - _start);
+            _end = _index = _start = 0;
+#endif
+
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint MeasureVarint32(uint value)
     {
-        if ((value & (~0U << 7)) == 0) return 1; // need to rule out 0 for mod, so: might as well rule out 7-bit
         if (Lzcnt.IsSupported)
         {
             var bits = 32 - Lzcnt.LeadingZeroCount(value);
-            return (bits + 6) / 7;
+            return bits == 0 ? 1 : ((bits + 6) / 7);
         }
         else
         {
@@ -69,14 +97,14 @@ public struct Writer : IDisposable
 
     internal static uint MeasureVarint64(ulong value)
     {
-        if ((value & (~0UL << 7)) == 0) return 1; // need to rule out 0 for mod, so: might as well rule out 7-bit
         if (Lzcnt.X64.IsSupported)
         {
             var bits = 64 - (uint)Lzcnt.X64.LeadingZeroCount(value);
-            return (bits + 6) / 7;
+            return bits == 0 ? 1 : ((bits + 6) / 7);
         }
         else
         {
+            if ((value & (~0UL << 7)) == 0) return 1;
             if ((value & (~0UL << 14)) == 0) return 2;
             if ((value & (~0UL << 21)) == 0) return 3;
             if ((value & (~0UL << 28)) == 0) return 4;
@@ -106,6 +134,19 @@ public struct Writer : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void WriteTag(uint value) => WriteVarintUInt32(value);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void WriteTag(byte value)
+    {
+        if (_index < _end & (value & 0x80) == 0)
+        {
+            _buffer[_index++] = value;
+        }
+        else
+        {
+            WriteVarintUInt32(value);
+        }
+    }
+
     private void WriteVarintUInt32(uint value)
     {
         if (_index + 5 <= _end)
@@ -114,6 +155,7 @@ public struct Writer : IDisposable
             {
                 var bits = 32 - Lzcnt.LeadingZeroCount(value);
                 const uint HI_BIT = 0b10000000;
+
                 switch ((bits + 6) / 7)
                 {
                     case 0:
@@ -161,6 +203,7 @@ public struct Writer : IDisposable
         }
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void WriteVarintUInt32Slow(uint value)
         => throw new NotImplementedException();
 
@@ -174,7 +217,11 @@ public struct Writer : IDisposable
         WriteVarintUInt32((uint)bytes);
         if (_index + bytes <= _end)
         {
+#if USE_SPANS
+            var actualBytes = Reader.UTF8.GetBytes(value, _buffer.Slice(_index));
+#else
             var actualBytes = Reader.UTF8.GetBytes(value, new Span<byte>(_buffer, _index, bytes));
+#endif
             Debug.Assert(actualBytes == bytes);
             _index += bytes;
         }
@@ -205,7 +252,11 @@ public struct Writer : IDisposable
         WriteVarintUInt32((uint)bytes);
         if (_index + bytes <= _end)
         {
+#if USE_SPANS
+            value.CopyTo(_buffer.Slice(_index));
+#else
             value.CopyTo(new Span<byte>(_buffer, _index, bytes));
+#endif
             _index += bytes;
         }
         else
